@@ -1,7 +1,7 @@
 # FF - LLM Wiki知识库
 
 <p align="center">
-  <img src="docs/assets/brand/ff-llm-wiki-logo.png" alt="FF - LLM Wiki知识库 Logo" width="120" height="120">
+  <img src="frontend/public/knowledge-avatar-minimal.png" alt="FF - LLM Wiki知识库 图标" width="120" height="120">
 </p>
 
 **把自己的资料整理成可阅读、可关联、可追溯的知识库。**
