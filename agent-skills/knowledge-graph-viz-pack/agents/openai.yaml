@@ -1,0 +1,7 @@
+# Codex 专属配置（仅随 .agents 流派交付）
+interface:
+  display_name: "知识图谱可视化 · 星图馆"
+  short_description: "点名召唤时弹十范式画廊选型 · 真实图谱数据适配 data.js 契约 · 配色机检 + 截图验证闭环"
+
+policy:
+  allow_implicit_invocation: true

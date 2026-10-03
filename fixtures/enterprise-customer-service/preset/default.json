@@ -1,0 +1,8 @@
+{
+  "projectId": "PROJECT-RETAIL-SERVICE-KNOWLEDGE",
+  "snapshotId": "KS-RETAIL-SERVICE-1.1",
+  "knowledgeSnapshot": "knowledge-snapshot-v1.1.json",
+  "graphProjection": "graph-projection-v1.1.json",
+  "sourceCorpus": "../corpus-manifest.json",
+  "note": "正式产品应通过统一快照导入入口加载；不得让图谱单独读取另一套节点或关系。"
+}

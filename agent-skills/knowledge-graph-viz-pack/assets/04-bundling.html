@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>04 · 光纤束 — 层次边捆绑</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  svg { position: fixed; inset: 0; width: 100vw; height: 100vh; }
+  .edge {
+    fill: none; stroke-width: 1.1; opacity: .32;
+    transition: opacity .25s, stroke-width .25s;
+  }
+  svg.focus .edge { opacity: .04; }
+  svg.focus .edge.on {
+    opacity: .95; stroke-width: 2;
+    stroke-dasharray: 6 10;
+    animation: flow 0.9s linear infinite;
+  }
+  @keyframes flow { to { stroke-dashoffset: -16; } }
+  .leaf-label {
+    font-family: var(--mono); font-size: 10.5px; fill: #6b7c96;
+    cursor: pointer; transition: fill .2s;
+  }
+  .leaf-label:hover, .leaf-label.on { fill: #dbe6f5; font-weight: 600; }
+  .domain-arc { opacity: .85; filter: drop-shadow(0 0 6px var(--c)); }
+  .domain-label {
+    font-family: var(--display); font-size: 15px; font-weight: 800;
+    fill: #dbe6f5; letter-spacing: .06em;
+  }
+  .draw-in { animation: none; }
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+<svg id="stage"></svg>
+
+<div class="hud hud-top">
+  <div class="hud-title">
+    <div class="kicker">Exhibit 04 · Hierarchical Edge Bundling · d3.curveBundle</div>
+    <h1>光纤<em>束</em></h1>
+    <div class="sub">跨领域的关联被"捆"成主干光缆 —— 边不再乱窜,而是沿知识层级的树路弯曲汇流。<b style="color:var(--ink)">悬停任意概念</b>,点亮它的所有连接。</div>
+  </div>
+  <a class="back" href="index.html">◀ 星图馆</a>
+</div>
+
+<div class="legend" id="legend"></div>
+<div class="readout"><div><b>112</b> LEAVES · <b id="stat-e">—</b> BUNDLED EDGES · β <b>0.88</b></div></div>
+
+<script src="data.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script>
+const DOMAINS = KG.DOMAINS;
+const svg = d3.select('#stage');
+const Wv = innerWidth, Hv = innerHeight;
+const R = Math.min(Wv, Hv) / 2 - 130;
+const g = svg.attr('viewBox', [-Wv / 2, -Hv / 2, Wv, Hv]).append('g');
+
+/* ---------- 层次 → 径向布局 ---------- */
+const root = d3.hierarchy(KG.hierarchy);
+d3.cluster().size([2 * Math.PI, R - 40])(root);
+const leafById = new Map(root.leaves().map(d => [d.data.id, d]));
+
+/* ---------- 领域弧带 ---------- */
+const arcGen = d3.arc().innerRadius(R - 18).outerRadius(R - 12);
+root.children.forEach(dom => {
+  const angles = dom.leaves().map(l => l.x);
+  const a0 = d3.min(angles) - 0.02, a1 = d3.max(angles) + 0.02;
+  const c = DOMAINS[dom.data.domain].color;
+  g.append('path')
+    .attr('class', 'domain-arc')
+    .attr('d', arcGen({ startAngle: a0, endAngle: a1 }))
+    .style('--c', c).attr('fill', c);
+  const mid = (a0 + a1) / 2, deg = mid * 180 / Math.PI - 90;
+  const flip = mid > Math.PI;
+  g.append('text')
+    .attr('class', 'domain-label')
+    .attr('transform', `rotate(${deg}) translate(${R + 104},0) rotate(${flip ? 180 : 0})`)
+    .attr('text-anchor', 'middle').attr('dy', '0.32em')
+    .attr('fill', c)
+    .style('filter', `drop-shadow(0 0 10px ${c})`)
+    .text(dom.data.name);
+});
+
+/* ---------- 捆绑边(叶↔叶) ---------- */
+const line = d3.lineRadial()
+  .curve(d3.curveBundle.beta(0.88))
+  .radius(d => d.y).angle(d => d.x);
+
+const edges = KG.links
+  .map(l => [leafById.get(l.source), leafById.get(l.target)])
+  .filter(([a, b]) => a && b);
+document.getElementById('stat-e').textContent = edges.length;
+
+const defs = svg.append('defs');
+const edgeSel = g.append('g').selectAll('path')
+  .data(edges).join('path')
+  .attr('class', 'edge')
+  .attr('d', ([a, b]) => line(a.path(b)))
+  .attr('stroke', ([a, b], i) => {
+    const ca = DOMAINS[a.data.domain].color, cb = DOMAINS[b.data.domain].color;
+    if (ca === cb) return ca;
+    const p = (n, r = n.y, x = n.x) => [Math.sin(x) * r, -Math.cos(x) * r];
+    const gr = defs.append('linearGradient')
+      .attr('id', 'g' + i).attr('gradientUnits', 'userSpaceOnUse')
+      .attr('x1', p(a)[0]).attr('y1', p(a)[1])
+      .attr('x2', p(b)[0]).attr('y2', p(b)[1]);
+    gr.append('stop').attr('offset', 0).attr('stop-color', ca);
+    gr.append('stop').attr('offset', 1).attr('stop-color', cb);
+    return `url(#g${i})`;
+  });
+
+/* ---------- 叶标签 + 悬停点亮 ---------- */
+const labelSel = g.append('g').selectAll('text')
+  .data(root.leaves()).join('text')
+  .attr('class', 'leaf-label')
+  .attr('transform', d => `rotate(${d.x * 180 / Math.PI - 90}) translate(${R - 2},0) ${d.x > Math.PI ? 'rotate(180)' : ''}`)
+  .attr('text-anchor', d => d.x > Math.PI ? 'end' : 'start')
+  .attr('dy', '0.32em')
+  .text(d => d.data.name);
+
+function focus(leaf) {
+  svg.classed('focus', !!leaf);
+  if (!leaf) {
+    edgeSel.classed('on', false);
+    labelSel.classed('on', false).attr('fill', null);
+    return;
+  }
+  const hot = new Set();
+  edgeSel.classed('on', ([a, b]) => {
+    const on = a === leaf || b === leaf;
+    if (on) { hot.add(a); hot.add(b); }
+    return on;
+  }).filter('.on').raise();
+  labelSel.classed('on', d => hot.has(d))
+    .attr('fill', d => hot.has(d) ? DOMAINS[d.data.domain].color : null);
+}
+labelSel.on('mouseenter', (_, d) => focus(d)).on('mouseleave', () => focus(null));
+
+/* ---------- 入场:光缆逐根点亮 ---------- */
+edgeSel.each(function (_, i) {
+  const L = this.getTotalLength();
+  d3.select(this)
+    .attr('stroke-dasharray', `${L} ${L}`).attr('stroke-dashoffset', L)
+    .transition().delay(200 + i * 4).duration(900).ease(d3.easeCubicOut)
+    .attr('stroke-dashoffset', 0)
+    .on('end', function () { d3.select(this).attr('stroke-dasharray', null).attr('stroke-dashoffset', null); });
+});
+
+/* ---------- 图例 ---------- */
+const legend = document.getElementById('legend');
+DOMAINS.forEach(d => {
+  const el = document.createElement('span');
+  el.className = 'chip'; el.style.setProperty('--c', d.color);
+  el.innerHTML = `<i></i>${d.name}`;
+  legend.appendChild(el);
+});
+</script>
+</body>
+</html>

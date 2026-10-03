@@ -1,0 +1,8 @@
+{
+  "kind": "interactive-html",
+  "category": "前端可视化",
+  "entry": "assets/index.html",
+  "title": "对话产品模板 · 八种 Chatbot 产品布局基线",
+  "requiresNetwork": true,
+  "note": "页面本地即可渲染；联网加载 Google Fonts 字体更佳；八个模板页由画廊直接跳转。建议桌面端 Chrome / Edge 打开。"
+}

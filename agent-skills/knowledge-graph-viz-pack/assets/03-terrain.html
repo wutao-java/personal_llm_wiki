@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>03 · 语义地形图 — 知识即大陆</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  #stage { cursor: grab; }
+  #stage:active { cursor: grabbing; }
+  .hint {
+    position: fixed; left: 50%; bottom: 76px; transform: translateX(-50%);
+    z-index: 10; font-size: 10px; letter-spacing: .3em; color: var(--ink-faint);
+    animation: hud-in 1s .8s both;
+  }
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+<div class="scanline"></div>
+
+<div class="hud hud-top">
+  <div class="hud-title">
+    <div class="kicker">Exhibit 03 · Embedding Map · UMAP 范式</div>
+    <h1>语义<em>地形图</em></h1>
+    <div class="sub">不画连线 —— 4,800 个知识点按语义嵌入落成大陆,密度即海拔。这就是 Nomic Atlas / WizMap 的"数据地图"范式。<b style="color:var(--ink)">滚轮放大</b>,地名会逐级浮现。</div>
+  </div>
+  <a class="back" href="index.html">◀ 星图馆</a>
+</div>
+
+<div class="hint">SEMANTIC ZOOM · 放大看第二级地名</div>
+<div class="legend" id="legend"></div>
+<div class="readout">
+  <div><b>4,800</b> EMBEDDINGS · <b>18</b> ELEVATION BANDS · ZOOM <b id="stat-z">1.0×</b></div>
+</div>
+<div class="tip" id="tip"><div class="t-name"></div><div class="t-meta"></div></div>
+
+<script src="data.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script>
+const DOMAINS = KG.DOMAINS;
+const rand = KG.mulberry32(7);
+const W = 1600, H = 1000;                     // 世界坐标
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+
+/* ---------- 生成"嵌入":领域 → 概念锚点 → 高斯云 ---------- */
+function gauss() { return (rand() + rand() + rand() - 1.5) / 1.5; }
+
+const anchors = [];   // 每个概念一个锚点(二级地名)
+DOMAINS.forEach((d, di) => {
+  const A = (di / DOMAINS.length) * Math.PI * 2 - Math.PI / 2;
+  const cx = W / 2 + Math.cos(A) * W * 0.30;
+  const cy = H / 2 + Math.sin(A) * H * 0.30;
+  d._cx = cx; d._cy = cy;
+  KG.nodes.filter(n => n.domain === di && !n.hub).forEach(n => {
+    anchors.push({
+      name: n.name, domain: di,
+      x: cx + gauss() * W * 0.085,
+      y: cy + gauss() * H * 0.085,
+    });
+  });
+});
+
+const pts = [];
+for (let i = 0; i < 4800; i++) {
+  const a = anchors[Math.floor(rand() * anchors.length)];
+  pts.push({ x: a.x + gauss() * 34, y: a.y + gauss() * 34, domain: a.domain });
+}
+
+/* ---------- 海拔:密度等高线(单色系 · 深海→辉光) ---------- */
+const contours = d3.contourDensity()
+  .x(p => p.x).y(p => p.y)
+  .size([W, H]).bandwidth(24).thresholds(18)(pts);
+
+const maxV = d3.max(contours, c => c.value);
+const elev = d3.scaleLinear().domain([0, maxV])
+  .range(['#060b18', '#134e63']);            // 单一青色系,暗→亮
+const lineGlow = d3.scaleLinear().domain([0, maxV]).range([0.05, 0.65]);
+
+const quad = d3.quadtree().x(a => a.x).y(a => a.y).addAll(anchors);
+
+/* ---------- 渲染 ---------- */
+let T = d3.zoomIdentity;
+let dpr = 1;
+
+function resize() {
+  dpr = window.devicePixelRatio || 1;
+  canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr;
+  canvas.style.width = innerWidth + 'px'; canvas.style.height = innerHeight + 'px';
+  // 初始:世界铺满屏幕
+  const k = Math.min(innerWidth / W, innerHeight / H) * 0.94;
+  base = d3.zoomIdentity.translate((innerWidth - W * k) / 2, (innerHeight - H * k) / 2).scale(k);
+  draw();
+}
+let base = d3.zoomIdentity;
+const path = d3.geoPath().context(ctx);
+
+function draw() {
+  const t = T.k === 1 && T.x === 0 && T.y === 0 ? base
+          : d3.zoomIdentity.translate(T.x, T.y).scale(T.k);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#04060d';
+  ctx.fillRect(0, 0, innerWidth, innerHeight);
+
+  // — 等高线地形(在世界变换下绘制) —
+  ctx.save();
+  ctx.translate(t.x, t.y); ctx.scale(t.k, t.k);
+  contours.forEach(c => {
+    ctx.beginPath(); path(c);
+    ctx.fillStyle = elev(c.value); ctx.globalAlpha = 0.55; ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = `rgba(34, 211, 238, ${lineGlow(c.value)})`;
+    ctx.lineWidth = (c.value > maxV * 0.55 ? 1.4 : 0.7) / t.k;
+    ctx.shadowColor = 'rgba(34,211,238,.5)';
+    ctx.shadowBlur = c.value > maxV * 0.55 ? 6 : 0;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  });
+  ctx.restore();
+
+  // — 嵌入点(位置随变换,大小恒定) —
+  pts.forEach(p => {
+    const sx = t.applyX(p.x), sy = t.applyY(p.y);
+    if (sx < -10 || sy < -10 || sx > innerWidth + 10 || sy > innerHeight + 10) return;
+    ctx.fillStyle = DOMAINS[p.domain].color;
+    ctx.globalAlpha = 0.75;
+    ctx.fillRect(sx - 0.8, sy - 0.8, 1.6, 1.6);
+  });
+  ctx.globalAlpha = 1;
+
+  // — 一级地名:领域(始终可见,像大陆名) —
+  DOMAINS.forEach(d => {
+    const sx = t.applyX(d._cx), sy = t.applyY(d._cy);
+    ctx.font = `800 ${Math.min(26, 15 + t.k * 3)}px Unbounded, "PingFang SC", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.shadowColor = d.color; ctx.shadowBlur = 18;
+    ctx.fillStyle = 'rgba(219,230,245,.92)';
+    ctx.fillText(d.name, sx, sy - 6);
+    ctx.shadowBlur = 0;
+    ctx.font = '600 9px "IBM Plex Mono", monospace';
+    ctx.fillStyle = 'rgba(107,124,150,.9)';
+    ctx.fillText(d.en, sx, sy + 12);
+  });
+
+  // — 二级地名:概念(语义缩放,放大才浮现) —
+  const k = t.k / base.k;
+  if (k >= 1.8) {
+    const alpha = Math.min(1, (k - 1.8) / 1.2);
+    ctx.font = '600 11px "IBM Plex Mono", "PingFang SC", monospace';
+    ctx.textAlign = 'center';
+    anchors.forEach(a => {
+      const sx = t.applyX(a.x), sy = t.applyY(a.y);
+      if (sx < 0 || sy < 0 || sx > innerWidth || sy > innerHeight) return;
+      ctx.fillStyle = `rgba(219,230,245,${0.78 * alpha})`;
+      ctx.fillText(a.name, sx, sy);
+    });
+  }
+  document.getElementById('stat-z').textContent = k.toFixed(1) + '×';
+}
+
+/* ---------- 交互 ---------- */
+const zoom = d3.zoom().scaleExtent([0.6, 14])
+  .on('zoom', ev => { T = ev.transform; draw(); });
+d3.select(canvas).call(zoom);
+// 让 zoom 的初始状态等于 base
+resize();
+d3.select(canvas).call(zoom.transform, base);
+window.addEventListener('resize', resize);
+
+const tip = document.getElementById('tip');
+canvas.addEventListener('mousemove', e => {
+  const t = T.k === 1 && T.x === 0 && T.y === 0 ? base : T;
+  const wx = t.invertX(e.clientX), wy = t.invertY(e.clientY);
+  const a = quad.find(wx, wy, 30 / t.k);
+  if (a) {
+    tip.classList.add('show');
+    tip.style.left = (e.clientX + 16) + 'px'; tip.style.top = (e.clientY + 12) + 'px';
+    tip.style.setProperty('--tip-c', DOMAINS[a.domain].color);
+    tip.querySelector('.t-name').textContent = a.name;
+    tip.querySelector('.t-meta').textContent = DOMAINS[a.domain].name + ' 大陆 · ' + DOMAINS[a.domain].en;
+  } else tip.classList.remove('show');
+});
+
+/* ---------- 图例 ---------- */
+const legend = document.getElementById('legend');
+DOMAINS.forEach(d => {
+  const el = document.createElement('span');
+  el.className = 'chip'; el.style.setProperty('--c', d.color);
+  el.innerHTML = `<i></i>${d.name}`;
+  legend.appendChild(el);
+});
+</script>
+</body>
+</html>

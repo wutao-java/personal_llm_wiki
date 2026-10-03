@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>03 Agent 工作台 · Chat Templates</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+.side-panel { width: 372px; }
+
+/* 执行链路步骤卡 */
+.step-card { border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); overflow: hidden; transition: border-color .2s; }
+.step-card.running { border-color: var(--accent-line); }
+.step-head { display: flex; align-items: center; gap: 9px; padding: 10px 12px; cursor: pointer; user-select: none; }
+.step-head:hover { background: var(--surface-2); }
+.st-ico {
+  width: 18px; height: 18px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  font-size: 10px; font-weight: 700;
+  border: 1.5px solid var(--border-hi); color: transparent; transition: all .2s;
+}
+.step-card.done .st-ico { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.step-card.running .st-ico { border-color: var(--accent); border-top-color: transparent; animation: spin .7s linear infinite; }
+.step-card.failed .st-ico { background: var(--err); border-color: var(--err); color: #fff; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.st-title { font-size: 12.5px; font-weight: 600; flex: 1; min-width: 0; }
+.st-title small { display: block; font-weight: 400; font-family: var(--mono); font-size: 10px; color: var(--faint); margin-top: 2px; }
+.st-dur { font-family: var(--mono); font-size: 10.5px; color: var(--faint); flex: none; }
+.st-chev { color: var(--faint); font-size: 10px; transition: transform .15s; }
+.step-card.open .st-chev { transform: rotate(90deg); }
+.step-detail { display: none; border-top: 1px solid var(--border); padding: 10px 12px; background: var(--surface-2); }
+.step-card.open .step-detail { display: block; }
+.io-label { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; color: var(--faint); margin: 7px 0 4px; }
+.io-label:first-child { margin-top: 0; }
+.io-block {
+  font-family: var(--mono); font-size: 11px; line-height: 1.65; color: var(--dim);
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm);
+  padding: 8px 10px; white-space: pre-wrap; word-break: break-all; max-height: 130px; overflow-y: auto;
+}
+.retry-row {
+  display: flex; align-items: center; gap: 7px; margin-top: 8px;
+  font-size: 11px; color: var(--warn);
+  background: var(--warn-soft); border-radius: var(--r-sm); padding: 6px 10px;
+}
+/* 面板头部统计 */
+.trace-stats { display: flex; gap: 8px; padding: 12px 14px 2px; }
+.ts { flex: 1; border: 1px solid var(--border); border-radius: var(--r-md); padding: 8px 10px; background: var(--surface); }
+.ts b { display: block; font-family: var(--mono); font-size: 15px; font-weight: 500; }
+.ts span { font-size: 10px; color: var(--faint); }
+/* 消息里的执行中状态条 */
+.exec-banner {
+  display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--dim);
+  border: 1px dashed var(--border-hi); border-radius: var(--r-md); padding: 9px 13px; margin-bottom: 10px;
+}
+.exec-banner .st-ico { width: 15px; height: 15px; }
+.exec-banner.done { border-style: solid; color: var(--ink); }
+.exec-banner.done .badge-ok { color: var(--ok); font-weight: 600; }
+</style>
+</head>
+<body data-ai-name="Agent">
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="sb-head"><span class="logo">💬</span><a href="index.html">Chat Templates</a><span class="tpl">TPL-03</span></div>
+    <button class="new-chat"><b>＋</b> 新建任务</button>
+    <nav class="convs">
+      <div class="group">进行中</div>
+      <button class="item on">AI 客服技术方案调研</button>
+      <div class="group">已完成</div>
+      <button class="item">竞品价格监控周报</button>
+      <button class="item">整理 Q2 用户访谈记录</button>
+      <button class="item">给 30 个线索打分排序</button>
+      <div class="group">已归档</div>
+      <button class="item">官网文案 A/B 版本生成</button>
+    </nav>
+    <div class="sb-foot"><span class="ava">木</span>木鱼<span class="plan">PRO</span></div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="crumb"><a href="index.html">模板库</a> / <b>03 Agent 工作台</b></div>
+      <span class="model-pill"><i></i>Agent · 4 个工具可用 ▾</span>
+      <div class="tb-spacer"></div>
+      <button class="tb-btn" id="theme-toggle" data-silent="1"></button>
+      <button class="tb-btn" id="stop-btn">⏹ 停止</button>
+    </header>
+
+    <div class="thread-wrap">
+      <div class="thread" id="thread">
+
+        <div class="msg user">
+          <div class="ava">你</div>
+          <div class="body">
+            <div class="who">你 <span class="t">14:02</span></div>
+            <div class="prose">帮我调研一下,2026 年做 AI 客服该选什么技术方案?查最新资料,给我一页纸结论。</div>
+          </div>
+        </div>
+
+        <div class="msg ai">
+          <div class="ava">AI</div>
+          <div class="body">
+            <div class="who">Agent <span class="t">14:02</span></div>
+            <div class="exec-banner" id="exec-banner">
+              <span class="st-ico" id="banner-ico" style="border-color:var(--accent);border-top-color:transparent;animation:spin .7s linear infinite"></span>
+              <span id="banner-text">已生成执行计划,共 4 步 —— 右侧面板可实时查看每一步的工具调用</span>
+            </div>
+            <div class="prose" id="final-prose"></div>
+            <div class="msg-actions" id="final-actions" style="opacity:0">
+              <button>📋 复制</button><button>🔄 重跑任务</button><button>📎 导出执行报告</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="composer">
+      <div class="inner">
+        <div class="c-box">
+          <textarea rows="1" placeholder="布置新任务,或对当前执行提出修正…(演示环境)"></textarea>
+          <button class="send" data-silent="1">↑</button>
+        </div>
+        <div class="c-hint">执行中可随时打字介入 · 资金/删除类操作会停下来等你审批</div>
+      </div>
+    </div>
+  </main>
+
+  <aside class="side-panel">
+    <div class="sp-head">执行链路 <span class="cnt" id="step-cnt">0/4</span><button class="sp-act" id="expand-all">全部展开</button></div>
+    <div class="trace-stats">
+      <div class="ts"><b id="stat-time">0.0s</b><span>总耗时</span></div>
+      <div class="ts"><b id="stat-tools">0</b><span>工具调用</span></div>
+      <div class="ts"><b id="stat-retry">0</b><span>重试</span></div>
+    </div>
+    <div class="sp-body" id="steps"></div>
+  </aside>
+
+</div>
+
+<script src="shared.js"></script>
+<script>
+CT.init();
+
+/* ---------------- 步骤数据 ---------------- */
+const STEPS = [
+  {
+    title: '解析需求,生成调研大纲', tool: 'plan.decompose', dur: 1.2,
+    input: '{ "goal": "2026 AI客服技术方案调研", "deliverable": "一页纸结论" }',
+    output: '大纲: ①问答型 vs 办事型分野 ②检索方案对比 ③Agent框架现状 ④合规要求'
+  },
+  {
+    title: '检索行业报告与技术博客', tool: 'web.search × 3', dur: 2.4,
+    input: '["2026 智能客服 渗透率 满意度", "hybrid retrieval FAQ 命中率", "agent 工单 自动化率"]',
+    output: '命中 23 条,去重后保留 9 条高相关来源(含 2 份行业报告、3 篇一线复盘)'
+  },
+  {
+    title: '抓取全文并抽取关键数据', tool: 'web.fetch × 9', dur: 3.1, retry: true,
+    input: '9 个 URL(并行抓取,超时 8s)',
+    output: '7 篇成功;1 篇 403(跳过);1 篇超时 → 重试后成功。抽取 14 组关键数据点',
+    retryNote: 'infoq.cn 请求超时(8s),自动重试 1 次后成功'
+  },
+  {
+    title: '交叉验证数据,撰写结论', tool: 'synthesize.write', dur: 2.0,
+    input: '14 组数据点 + 大纲',
+    output: '3 组数据存在口径冲突,已标注区间;生成一页纸结论(312 字)'
+  },
+];
+
+/* ---------------- 渲染骨架 ---------------- */
+const stepsEl = document.getElementById('steps');
+STEPS.forEach((s, i) => {
+  const card = document.createElement('div');
+  card.className = 'step-card pending';
+  card.id = 'step-' + i;
+  card.innerHTML = `
+    <div class="step-head">
+      <span class="st-ico">✓</span>
+      <span class="st-title">${s.title}<small>${s.tool}</small></span>
+      <span class="st-dur" id="dur-${i}"></span>
+      <span class="st-chev">▸</span>
+    </div>
+    <div class="step-detail">
+      <div class="io-label">INPUT</div><div class="io-block">${s.input}</div>
+      <div class="io-label">OUTPUT</div><div class="io-block" id="out-${i}">…</div>
+      ${s.retry ? '<div class="retry-row" id="retry-' + i + '" style="display:none">↻ ' + s.retryNote + '</div>' : ''}
+    </div>`;
+  card.querySelector('.step-head').addEventListener('click', () => card.classList.toggle('open'));
+  stepsEl.appendChild(card);
+});
+document.getElementById('expand-all').addEventListener('click', () => {
+  const cards = [...document.querySelectorAll('.step-card')];
+  const anyClosed = cards.some(c => !c.classList.contains('open'));
+  cards.forEach(c => c.classList.toggle('open', anyClosed));
+  document.getElementById('expand-all').textContent = anyClosed ? '全部折叠' : '全部展开';
+});
+
+/* ---------------- 执行模拟 ---------------- */
+const FINAL_HTML = `
+<p><strong>一页纸结论:</strong>2026 年 AI 客服按"答问题"和"办事情"分两条路走。</p>
+<ul>
+<li><strong>问答型(2~4 周)</strong>:渗透率已 61% 但满意度仅 43%,瓶颈在检索 —— 用 BM25+向量混合检索,FAQ 命中率可提升约 18pp;置信度不足必须转人工。</li>
+<li><strong>办事型(2~3 月)</strong>:头部电商工单自动化率 37%,资金操作全部保留人工审批卡点;编排框架 LangGraph 生产采用率第一(34%)。</li>
+<li><strong>合规红线</strong>:金融/医疗新规要求回答可追溯到知识来源 —— 溯源不是加分项,是准入项。</li>
+</ul>
+<p>建议:先上问答型攒三个月真实问题分布,再决策办事型的投入。<em>(依据 8 篇来源、14 组数据点,其中 3 组口径冲突已标注)</em></p>`;
+
+const t0 = performance.now();
+let toolCount = 0, retryCount = 0, elapsed = 0;
+const timer = setInterval(() => {
+  document.getElementById('stat-time').textContent = ((performance.now() - t0) / 1000).toFixed(1) + 's';
+}, 100);
+
+async function run() {
+  for (let i = 0; i < STEPS.length; i++) {
+    const s = STEPS[i], card = document.getElementById('step-' + i);
+    card.classList.remove('pending'); card.classList.add('running', 'open');
+    await sleep(s.dur * 550);
+    if (s.retry) {
+      card.classList.remove('running'); card.classList.add('failed');
+      card.querySelector('.st-ico').textContent = '!';
+      document.getElementById('retry-' + i).style.display = '';
+      retryCount++; document.getElementById('stat-retry').textContent = retryCount;
+      await sleep(900);
+      card.classList.remove('failed'); card.classList.add('running');
+      card.querySelector('.st-ico').textContent = '✓';
+      await sleep(600);
+    }
+    card.classList.remove('running'); card.classList.add('done');
+    card.classList.remove('open');
+    document.getElementById('dur-' + i).textContent = s.dur.toFixed(1) + 's';
+    document.getElementById('out-' + i).textContent = s.output;
+    toolCount += (s.tool.match(/× (\d+)/) ? +s.tool.match(/× (\d+)/)[1] : 1);
+    document.getElementById('stat-tools').textContent = toolCount;
+    document.getElementById('step-cnt').textContent = (i + 1) + '/4';
+  }
+  clearInterval(timer);
+  document.getElementById('stat-time').textContent = '8.7s';
+  const banner = document.getElementById('exec-banner');
+  banner.classList.add('done');
+  document.getElementById('banner-ico').style.cssText = 'background:var(--accent);border-color:var(--accent)';
+  document.getElementById('banner-ico').textContent = '✓';
+  document.getElementById('banner-text').innerHTML = '任务完成 · 4 步 · 14 次工具调用 · 1 次重试 <span class="badge-ok">全链路可回放 ↗</span>';
+  await CT.stream(document.getElementById('final-prose'), FINAL_HTML, { cps: 150 });
+  document.getElementById('final-actions').style.opacity = '';
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+run();
+
+document.getElementById('stop-btn').addEventListener('click', () => CT.toast('演示环境:真实实现会中断 Agent 循环并保留已完成步骤'));
+CT.demoReply = () => '<p>收到修正。真实实现里,这条消息会作为新的约束注入当前执行计划,未完成的步骤会重新规划。</p>';
+</script>
+</body>
+</html>

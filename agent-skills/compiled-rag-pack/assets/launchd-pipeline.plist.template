@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  编译式 RAG 自动化管线 · macOS LaunchAgent 模板
+  放到 ~/Library/LaunchAgents/com.<你的标签>.gbrain-pipeline.plist
+  为什么用 launchd 不用 crontab：macOS crontab 是 setuid root，非 TTY 环境被系统 SIGTERM 杀掉（EXIT:143）。
+  LaunchAgent 是用户级、无需 root、加载不需 TTY，适配无人值守。
+
+  装载与验证：
+    launchctl load ~/Library/LaunchAgents/com.<你的标签>.gbrain-pipeline.plist   # 返回 EXIT:0
+    launchctl list com.<你的标签>.gbrain-pipeline                                 # 可见即装好
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.你的标签.gbrain-pipeline</string>
+  <key>Program</key>
+  <string>/bin/bash</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/你的用户名/cron-pipeline.sh</string>
+  </array>
+  <!-- StartInterval：每隔多少秒触发一次。演示用 120，生产改 900（15 分钟）以上避免频繁空转 -->
+  <key>StartInterval</key>
+  <integer>900</integer>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/Users/你的用户名/.gbrain-pipeline-logs/stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/你的用户名/.gbrain-pipeline-logs/stderr.log</string>
+</dict>
+</plist>

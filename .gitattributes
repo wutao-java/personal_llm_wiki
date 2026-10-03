@@ -1,0 +1,3 @@
+# Preserve immutable source fixtures and test documents byte-for-byte.
+fixtures/enterprise-customer-service/raw/** -text
+frontend/e2e/fixtures/** -text

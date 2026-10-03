@@ -1,0 +1,49 @@
+{
+  "generatedAt": "2026-08-04T12:00:00+08:00",
+  "base": {
+    "snapshotId": "KS-RETAIL-SERVICE-1.0",
+    "nodes": 144,
+    "edges": 432,
+    "averageDegree": 6,
+    "degreeMedian": 5,
+    "degreeP90": 9,
+    "degreeMax": 19,
+    "hubs": 12,
+    "isolatedNodes": 0,
+    "crossDomainEdges": 101,
+    "crossDomainRatio": 0.234,
+    "domainCounts": {
+      "project": 18,
+      "catalog": 18,
+      "order": 18,
+      "fulfillment": 18,
+      "service": 18,
+      "knowledge": 18,
+      "system": 18,
+      "quality": 18
+    }
+  },
+  "update": {
+    "snapshotId": "KS-RETAIL-SERVICE-1.1",
+    "nodes": 150,
+    "edges": 450,
+    "averageDegree": 6,
+    "degreeMedian": 5,
+    "degreeP90": 9,
+    "degreeMax": 20,
+    "hubs": 13,
+    "isolatedNodes": 0,
+    "crossDomainEdges": 106,
+    "crossDomainRatio": 0.236,
+    "domainCounts": {
+      "project": 19,
+      "catalog": 19,
+      "order": 18,
+      "fulfillment": 19,
+      "service": 18,
+      "knowledge": 18,
+      "system": 18,
+      "quality": 21
+    }
+  }
+}

@@ -1,0 +1,40 @@
+---
+knowledge_id: "K-ORDER-ORDER-CANCEL"
+title: "订单取消"
+type: "process"
+domain: "order"
+sources: ["SRC-ORD-003", "SRC-ORD-001", "SRC-ORD-002", "SRC-ORD-004"]
+source_versions: ["SV-SRC-ORD-003-2", "SV-SRC-ORD-001-1", "SV-SRC-ORD-002-1", "SV-SRC-ORD-004-1"]
+updated: "2026-08-03"
+status: "accepted"
+---
+
+# 订单取消
+
+## 摘要
+
+在允许状态和时限内关闭订单，并触发库存释放和必要的退款。
+
+## 核心说明
+
+本页由多个来源中的定义、处理规则和可核验关系重组而成。它以 K-ORDER-ORDER-CANCEL 作为稳定身份，标题微调或图谱重新布局不会改变该身份。当前内容属于知识版本 KS-RETAIL-SERVICE-1.1。
+
+## 关系
+
+- 属于 [[order/order-payment-management|订单与支付管理]]（REL-0072，证据 2 条）
+- 协同支持 [[order/order-validation|订单校验]]（REL-0088，证据 2 条）
+- [取消窗口](../order/cancel-window.md) 协同支持本知识（REL-0089，证据 4 条）
+- 协同支持 [[order/order-create|订单创建]]（REL-0286，证据 2 条）
+- [支付](../order/payment.md) 协同支持本知识（REL-0288，证据 2 条）
+- 由其实现 [[system/order-service|订单服务]]（REL-0353，证据 2 条）
+
+## 来源
+
+- SRC-ORD-003：SV-SRC-ORD-003-1、SV-SRC-ORD-003-2
+- SRC-ORD-001：SV-SRC-ORD-001-1
+- SRC-ORD-002：SV-SRC-ORD-002-1
+- SRC-ORD-004：SV-SRC-ORD-004-1
+
+## 使用说明
+
+知识页面、图谱节点和问答相关知识都使用同一 knowledgeId。需要核对结论时，应通过关系或回答中的 evidenceId 打开对应资料版本和原文位置。

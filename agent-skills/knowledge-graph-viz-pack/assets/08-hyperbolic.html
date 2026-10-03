@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>08 · 双曲空间 — 庞加莱圆盘浏览器</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  svg { position: fixed; inset: 0; width: 100vw; height: 100vh; cursor: grab; }
+  svg:active { cursor: grabbing; }
+  .disk-edge { fill: none; stroke: rgba(34,211,238,.35); stroke-width: 1.5; filter: drop-shadow(0 0 14px rgba(34,211,238,.4)); }
+  .h-ring { fill: none; stroke: rgba(120,160,220,.09); stroke-width: 1; }
+  .lk { fill: none; transition: none; }
+  .nd { cursor: pointer; }
+  .nd-txt { font-family: var(--mono); fill: #dbe6f5; text-anchor: middle; pointer-events: none; }
+  .hub-txt { font-family: var(--display); font-weight: 800; }
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+<svg id="stage"></svg>
+
+<div class="hud hud-top">
+  <div class="hud-title">
+    <div class="kicker">Exhibit 08 · Poincaré Disk · Möbius Transform</div>
+    <h1>双曲<em>空间</em></h1>
+    <div class="sub">整棵知识树被塞进一个圆盘:焦点处被放大,无穷远被压缩到圆盘边缘 —— 这是 H3 系统的 focus+context 范式。<b style="color:var(--ink)">拖拽移动焦点</b>,<b style="color:var(--ink)">双击任意节点</b>把它拉到中心。</div>
+  </div>
+  <a class="back" href="index.html">◀ 星图馆</a>
+</div>
+
+<div class="legend" id="legend"></div>
+<div class="readout"><div><b>121</b> NODES IN A DISK · CURVATURE <b>−1</b></div></div>
+
+<script src="data.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script>
+const DOMAINS = KG.DOMAINS;
+const svg = d3.select('#stage');
+const Wv = innerWidth, Hv = innerHeight;
+const R = Math.min(Wv, Hv) / 2 - 70;      // 圆盘像素半径
+svg.attr('viewBox', [-Wv / 2, -Hv / 2, Wv, Hv]);
+const g = svg.append('g');
+
+/* ---------- 复数工具 ---------- */
+const cadd = (a, b) => [a[0] + b[0], a[1] + b[1]];
+const cmul = (a, b) => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]];
+const conj = a => [a[0], -a[1]];
+const cdiv = (a, b) => { const d = b[0] * b[0] + b[1] * b[1]; return [(a[0] * b[0] + a[1] * b[1]) / d, (a[1] * b[0] - a[0] * b[1]) / d]; };
+const cabs2 = a => a[0] * a[0] + a[1] * a[1];
+
+/* Möbius 平移: T_a(z) = (z + a) / (1 + conj(a)·z) */
+let A = [0, 0];
+const mobius = (z, a) => cdiv(cadd(z, a), cadd([1, 0], cmul(conj(a), z)));
+
+/* ---------- 双曲径向布局:深度 → 双曲半径 ---------- */
+const root = d3.hierarchy(KG.hierarchy);
+d3.cluster().size([2 * Math.PI, 1])(root);
+const H_R = [0, 0.68, 0.925];             // root / 领域 / 概念 的圆盘半径
+const nodes = [];
+root.each(n => {
+  const r = H_R[n.depth] + (n.depth === 2 ? ((n.data.id.charCodeAt(4) % 7) - 3) * 0.004 : 0);
+  n.z = [Math.sin(n.x) * r, -Math.cos(n.x) * r];
+  n.color = n.depth === 0 ? '#dbe6f5' : DOMAINS[n.data.domain ?? 0].color;
+  nodes.push(n);
+});
+const byId = new Map(nodes.filter(n => n.data.id).map(n => [n.data.id, n]));
+
+/* 边:树边(实)+ 跨域关联(虚) */
+const treeEdges = [];
+root.each(n => n.children && n.children.forEach(c => treeEdges.push({ a: n, b: c, tree: true })));
+const crossEdges = KG.links
+  .map(l => ({ a: byId.get(l.source), b: byId.get(l.target), tree: false }))
+  .filter(e => e.a && e.b && !(e.a.parent === e.b || e.b.parent === e.a));
+const edges = [...treeEdges, ...crossEdges];
+
+/* ---------- 静态装饰:圆盘边界 + 双曲同心环 ---------- */
+g.append('circle').attr('class', 'disk-edge').attr('r', R);
+[0.35, 0.68, 0.86, 0.95].forEach(r => g.append('circle').attr('class', 'h-ring').attr('r', r * R));
+
+/* ---------- 元素 ---------- */
+const edgeSel = g.append('g').selectAll('path').data(edges).join('path')
+  .attr('class', 'lk')
+  .attr('stroke', d => d.tree ? d.b.color : DOMAINS[d.a.data.domain].color);
+const nodeSel = g.append('g').selectAll('circle').data(nodes).join('circle')
+  .attr('class', 'nd').attr('fill', d => d.color);
+const txtSel = g.append('g').selectAll('text').data(nodes).join('text')
+  .attr('class', d => 'nd-txt' + (d.depth <= 1 ? ' hub-txt' : ''))
+  .text(d => d.depth === 0 ? 'AI' : d.data.name);
+
+/* ---------- 渲染一帧 ---------- */
+function render() {
+  const P = new Map();
+  nodes.forEach(n => {
+    const z = mobius(n.z, A);
+    const s = 1 - cabs2(z);              // 越近边缘越小(双曲度规)
+    P.set(n, { x: z[0] * R, y: z[1] * R, s: Math.max(0.02, s) });
+  });
+  edgeSel
+    .attr('d', d => {
+      const p = P.get(d.a), q = P.get(d.b);
+      const mx = (p.x + q.x) / 2 * 0.72, my = (p.y + q.y) / 2 * 0.72;   // 测地线:向圆心弯
+      return `M${p.x},${p.y}Q${mx},${my},${q.x},${q.y}`;
+    })
+    .attr('stroke-width', d => Math.max(0.3, (P.get(d.a).s + P.get(d.b).s) * (d.tree ? 1.3 : 0.55)))
+    .attr('opacity', d => Math.min(0.75, (P.get(d.a).s + P.get(d.b).s) * (d.tree ? 0.42 : 0.16)));
+  nodeSel
+    .attr('cx', d => P.get(d).x).attr('cy', d => P.get(d).y)
+    .attr('r', d => Math.max(0.6, (d.depth === 0 ? 10 : d.depth === 1 ? 13 : 7.5) * P.get(d).s))
+    .attr('opacity', d => Math.min(1, P.get(d).s * 2.4))
+    .style('filter', d => P.get(d).s > 0.5 ? `drop-shadow(0 0 8px ${d.color})` : 'none');
+  txtSel
+    .attr('x', d => P.get(d).x).attr('y', d => P.get(d).y - (d.depth === 1 ? 20 : 13) * P.get(d).s - 2)
+    .attr('font-size', d => (d.depth <= 1 ? 15 : 11.5) * P.get(d).s + 'px')
+    .attr('opacity', d => { const s = P.get(d).s; return d.depth <= 1 ? Math.min(1, s * 1.8) : (s > 0.42 ? Math.min(1, (s - 0.42) * 3.2) : 0); });
+}
+
+/* ---------- 交互:拖拽平移焦点 / 双击聚焦 ---------- */
+function translateBy(da) {
+  A = mobius(A, da);                      // 复合两次平移(近似,足够顺滑)
+  const m2 = cabs2(A);
+  if (m2 > 0.96 * 0.96) { const k = 0.96 / Math.sqrt(m2); A = [A[0] * k, A[1] * k]; }
+  render();
+}
+svg.call(d3.drag()
+  .on('drag', ev => translateBy([ev.dx / R * 0.85, ev.dy / R * 0.85])));
+
+nodeSel.on('dblclick', (ev, d) => {
+  ev.stopPropagation();
+  const from = A.slice(), to = [-d.z[0], -d.z[1]];
+  d3.transition().duration(900).ease(d3.easeCubicInOut).tween('focus', () => t => {
+    A = [from[0] + (to[0] - from[0]) * t, from[1] + (to[1] - from[1]) * t];
+    render();
+  });
+});
+svg.on('dblclick', () => {               // 双击空白回到全景
+  const from = A.slice();
+  d3.transition().duration(700).tween('reset', () => t => {
+    A = [from[0] * (1 - t), from[1] * (1 - t)]; render();
+  });
+});
+
+const legend = document.getElementById('legend');
+DOMAINS.forEach(d => {
+  const el = document.createElement('span');
+  el.className = 'chip'; el.style.setProperty('--c', d.color);
+  el.innerHTML = `<i></i>${d.name}`;
+  legend.appendChild(el);
+});
+
+render();
+/* 开场:从边缘漂入中心,展示空间的"流动感" */
+A = [0.62, 0.3];
+const intro = d3.transition().duration(1800).ease(d3.easeCubicOut);
+intro.tween('intro', () => t => { A = [0.62 * (1 - t), 0.3 * (1 - t)]; render(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "kind": "interactive-html",
+  "category": "前端可视化",
+  "entry": "assets/index.html",
+  "title": "星图馆 · 十种知识图谱可视化范式",
+  "requiresNetwork": true,
+  "note": "画廊首页本地即可渲染（真实截图预览）；点进各展厅需联网加载渲染库（esm.sh / jsdelivr CDN）。建议桌面端 Chrome / Edge 打开。"
+}

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>08 多智能体 · Chat Templates</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+/* 消息署名:每个智能体一个颜色 */
+.msg .ava.ag { color: #fff; }
+.role-pill { font-size: 9.5px; font-weight: 500; border-radius: 99px; padding: 1px 8px; color: var(--dim); background: var(--surface-2); }
+/* 交接分隔线 */
+.handoff {
+  display: flex; align-items: center; gap: 10px; margin: -6px 0;
+  font-family: var(--mono); font-size: 10px; color: var(--faint); letter-spacing: .05em;
+}
+.handoff::before, .handoff::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.handoff b { color: var(--accent); font-weight: 500; }
+/* 团队面板 */
+.agent-card { border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); padding: 11px 12px; transition: border-color .2s, box-shadow .2s; }
+.agent-card.working { border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
+.ag-top { display: flex; align-items: center; gap: 9px; }
+.ag-ava { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; flex: none; }
+.ag-name { font-size: 12.5px; font-weight: 600; }
+.ag-role { font-family: var(--mono); font-size: 9.5px; color: var(--faint); display: block; margin-top: 1px; }
+.ag-status { margin-left: auto; }
+.ag-now { font-size: 11px; color: var(--dim); margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); line-height: 1.6; }
+.ag-now::before { content: '▸ '; color: var(--accent); }
+/* 泳道图(面板底部的小型时序图) */
+.lanes { border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); padding: 12px; }
+.lanes .lane-row { display: flex; align-items: center; gap: 8px; margin: 7px 0; }
+.lanes .lane-ava { width: 16px; height: 16px; border-radius: 5px; font-size: 8px; font-weight: 700; color: #fff; display: grid; place-items: center; flex: none; }
+.lanes .lane-track { flex: 1; height: 6px; border-radius: 3px; background: var(--surface-2); position: relative; overflow: hidden; }
+.lanes .lane-track b { position: absolute; top: 0; bottom: 0; border-radius: 3px; opacity: .85; width: 0; transition: width .6s ease, left .3s; }
+.lanes .lg { font-family: var(--mono); font-size: 9px; color: var(--faint); letter-spacing: .08em; margin-bottom: 2px; }
+</style>
+</head>
+<body data-ai-name="协调者">
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="sb-head"><span class="logo">💬</span><a href="index.html">Chat Templates</a><span class="tpl">TPL-08</span></div>
+    <button class="new-chat"><b>＋</b> 新任务</button>
+    <nav class="convs">
+      <div class="group">进行中</div>
+      <button class="item on">AI 客服技术方案调研</button>
+      <div class="group">已完成</div>
+      <button class="item">发布会资料包(4 agents)</button>
+      <button class="item">竞品月报(3 agents)</button>
+      <button class="item">代码库安全审计(5 agents)</button>
+    </nav>
+    <div class="sb-foot"><span class="ava">木</span>木鱼<span class="plan">PRO</span></div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="crumb"><a href="index.html">模板库</a> / <b>08 多智能体</b></div>
+      <span class="model-pill"><i></i>团队模式 · 4 agents ▾</span>
+      <div class="tb-spacer"></div>
+      <button class="tb-btn" id="theme-toggle" data-silent="1"></button>
+      <button class="tb-btn">⏹ 停止全部</button>
+    </header>
+
+    <div class="thread-wrap" id="thread-wrap">
+      <div class="thread" id="thread">
+
+        <div class="msg user">
+          <div class="ava">你</div>
+          <div class="body"><div class="who">你 <span class="t">14:02</span></div>
+            <div class="prose">帮我调研一下,2026 年做 AI 客服该选什么技术方案?人多力量大,给我又快又全的结果。</div>
+          </div>
+        </div>
+
+        <div class="msg ai">
+          <div class="ava ag" style="background:#0d9488">协</div>
+          <div class="body">
+            <div class="who">协调者 <span class="role-pill">Coordinator</span> <span class="t">14:02</span></div>
+            <div class="prose"><p>任务已拆解,派工如下:<strong>调研员</strong>负责检索与来源筛选,<strong>分析师</strong>负责数据交叉验证,并行开工;<strong>写作者</strong>等他们交付后汇总成一页纸。右侧面板可以看每个人的实时状态。</p></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="composer">
+      <div class="inner">
+        <div class="c-box">
+          <textarea rows="1" placeholder="对协调者说话,它会转达给对应的智能体…(演示环境)"></textarea>
+          <button class="send" data-silent="1">↑</button>
+        </div>
+        <div class="c-hint">消息流里每条发言都有<b>署名与角色</b> · 交接处有分隔线 · 右侧看团队实时状态</div>
+      </div>
+    </div>
+  </main>
+
+  <aside class="side-panel">
+    <div class="sp-head">团队 <span class="cnt">4 agents</span><button class="sp-act" id="replay-btn">重放</button></div>
+    <div class="sp-body">
+      <div class="agent-card" id="ag-c">
+        <div class="ag-top"><span class="ag-ava" style="background:#0d9488">协</span><div><span class="ag-name">协调者</span><span class="ag-role">Coordinator · 拆解与验收</span></div><span class="ag-status pill ok" id="st-c">值守</span></div>
+        <div class="ag-now" id="now-c">监控任务进度,等待成员交付</div>
+      </div>
+      <div class="agent-card" id="ag-r">
+        <div class="ag-top"><span class="ag-ava" style="background:#5b8def">研</span><div><span class="ag-name">调研员</span><span class="ag-role">Researcher · 检索与筛源</span></div><span class="ag-status pill dim" id="st-r">待命</span></div>
+        <div class="ag-now" id="now-r">—</div>
+      </div>
+      <div class="agent-card" id="ag-a">
+        <div class="ag-top"><span class="ag-ava" style="background:#d97706">析</span><div><span class="ag-name">分析师</span><span class="ag-role">Analyst · 数据交叉验证</span></div><span class="ag-status pill dim" id="st-a">待命</span></div>
+        <div class="ag-now" id="now-a">—</div>
+      </div>
+      <div class="agent-card" id="ag-w">
+        <div class="ag-top"><span class="ag-ava" style="background:#e0608a">写</span><div><span class="ag-name">写作者</span><span class="ag-role">Writer · 汇总成稿</span></div><span class="ag-status pill dim" id="st-w">待命</span></div>
+        <div class="ag-now" id="now-w">—</div>
+      </div>
+
+      <div class="lanes">
+        <div class="lg">TIMELINE · 并行泳道</div>
+        <div class="lane-row"><span class="lane-ava" style="background:#0d9488">协</span><div class="lane-track"><b id="ln-c" style="background:#0d9488"></b></div></div>
+        <div class="lane-row"><span class="lane-ava" style="background:#5b8def">研</span><div class="lane-track"><b id="ln-r" style="background:#5b8def"></b></div></div>
+        <div class="lane-row"><span class="lane-ava" style="background:#d97706">析</span><div class="lane-track"><b id="ln-a" style="background:#d97706"></b></div></div>
+        <div class="lane-row"><span class="lane-ava" style="background:#e0608a">写</span><div class="lane-track"><b id="ln-w" style="background:#e0608a"></b></div></div>
+      </div>
+    </div>
+  </aside>
+
+</div>
+
+<script src="shared.js"></script>
+<script>
+CT.init();
+
+/* ---------------- 智能体消息工厂 ---------------- */
+function agentMsg(initial, color, name, role) {
+  const el = document.createElement('div');
+  el.className = 'msg ai';
+  el.innerHTML = '<div class="ava ag" style="background:' + color + '">' + initial + '</div>' +
+    '<div class="body"><div class="who">' + name + ' <span class="role-pill">' + role + '</span> <span class="t">' +
+    new Date().toTimeString().slice(0, 5) + '</span></div><div class="prose"></div></div>';
+  return el;
+}
+function handoff(text) {
+  const el = document.createElement('div');
+  el.className = 'handoff';
+  el.innerHTML = text;
+  return el;
+}
+const thread = document.getElementById('thread');
+const wrap = document.getElementById('thread-wrap');
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function setAgent(k, status, cls, now, lane) {
+  document.getElementById('st-' + k).textContent = status;
+  document.getElementById('st-' + k).className = 'ag-status pill ' + cls;
+  if (now) document.getElementById('now-' + k).textContent = now;
+  document.getElementById('ag-' + k).classList.toggle('working', cls === 'warn');
+  if (lane != null) document.getElementById('ln-' + k).style.width = lane + '%';
+}
+
+/* ---------------- 编排剧本 ---------------- */
+async function play() {
+  setAgent('c', '值守', 'ok', '已派工:调研员 + 分析师并行', 18);
+
+  /* 并行阶段:调研员 & 分析师同时工作 */
+  await sleep(700);
+  thread.appendChild(handoff('协调者 → <b>调研员 · 分析师</b> · 并行开工'));
+  setAgent('r', '工作中', 'warn', '检索"客服 AI 渗透率 / 混合检索 benchmark"…', 8);
+  setAgent('a', '工作中', 'warn', '等待首批来源,先建验证清单…', 6);
+  wrap.scrollTop = 1e6;
+
+  await sleep(1600);
+  const mr = agentMsg('研', '#5b8def', '调研员', 'Researcher');
+  thread.appendChild(mr);
+  await CT.stream(mr.querySelector('.prose'),
+    '<p>检索完成:3 轮共 46 条,筛出 <strong>9 篇高相关来源</strong>(2 份行业报告、3 篇一线复盘、1 份监管文件)。关键数字:渗透率 61%、满意度 43%、混合检索命中率 +18pp。来源包已移交分析师。</p>', { cps: 150 });
+  setAgent('r', '已交付', 'ok', '9 篇来源已移交 → 分析师', 62);
+  setAgent('a', '工作中', 'warn', '交叉验证 14 组数据点…', 30);
+
+  thread.appendChild(handoff('调研员 → <b>分析师</b> · 移交 9 篇来源'));
+  await sleep(1200);
+  const ma = agentMsg('析', '#d97706', '分析师', 'Analyst');
+  thread.appendChild(ma);
+  await CT.stream(ma.querySelector('.prose'),
+    '<p>验证完成:14 组数据点中 11 组可靠;<strong>3 组存在口径冲突</strong>(如自动化率 37% vs 52%,分别为"全自动闭环"与"含人工辅助"),已标注区间和口径。结论置信度:高。数据包移交写作者。</p>', { cps: 150 });
+  setAgent('a', '已交付', 'ok', '验证报告已移交 → 写作者', 78);
+  setAgent('w', '工作中', 'warn', '按"结论先行"结构汇总成稿…', 55);
+
+  thread.appendChild(handoff('分析师 → <b>写作者</b> · 移交验证后数据包'));
+  await sleep(1300);
+  const mw = agentMsg('写', '#e0608a', '写作者', 'Writer');
+  thread.appendChild(mw);
+  await CT.stream(mw.querySelector('.prose'),
+    '<p><strong>一页纸结论(终稿):</strong>2026 年 AI 客服按"答问题 / 办事情"分路。① 问答型先行:混合检索 + 溯源 + 低置信转人工,2~4 周、¥15~20 万;② 办事型看团队:自动化率 37~52%(口径见注),资金操作必须人工审批,2~3 月、¥45~60 万;③ 溯源是合规准入项。建议先 ① 攒三个月问题分布再决策 ②。</p>', { cps: 140 });
+  setAgent('w', '已交付', 'ok', '终稿完成', 96);
+
+  await sleep(500);
+  thread.appendChild(handoff('写作者 → <b>协调者</b> · 终稿验收'));
+  const mc = agentMsg('协', '#0d9488', '协调者', 'Coordinator');
+  thread.appendChild(mc);
+  await CT.stream(mc.querySelector('.prose'),
+    '<p>验收通过 ✓ 总耗时 38 秒(演示加速),4 名成员、2 次并行、3 次交接,全程可回放。需要我让调研员补查某个数字的出处吗?</p>', { cps: 130 });
+  setAgent('c', '完成', 'ok', '任务验收通过,团队待命', 100);
+}
+play();
+
+document.getElementById('replay-btn').addEventListener('click', () => location.reload());
+CT.demoReply = () => '<p>协调者已收到,会把这条指令路由给对应的智能体。真实实现:每个 agent 是独立上下文,协调者负责派工、汇聚与冲突仲裁。</p>';
+</script>
+</body>
+</html>

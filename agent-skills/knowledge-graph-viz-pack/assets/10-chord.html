@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>10 · 关系之环 — 领域和弦图</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  svg { position: fixed; inset: 0; width: 100vw; height: 100vh; }
+  .ribbon { transition: opacity .25s; mix-blend-mode: screen; }
+  svg.focus .ribbon { opacity: .05; }
+  svg.focus .ribbon.on { opacity: .92; }
+  .arc { cursor: pointer; filter: drop-shadow(0 0 10px var(--c)); }
+  .dom-label { font-family: var(--display); font-weight: 800; font-size: 16px; fill: #dbe6f5; pointer-events: none; }
+  .dom-count { font-family: var(--mono); font-size: 10px; fill: #6b7c96; letter-spacing: .16em; pointer-events: none; }
+  .center-stat { text-anchor: middle; pointer-events: none; }
+  .center-stat .big { font-family: var(--display); font-weight: 800; font-size: 54px; fill: #dbe6f5; }
+  .center-stat .small { font-family: var(--mono); font-size: 10px; fill: #6b7c96; letter-spacing: .34em; }
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+<svg id="stage"></svg>
+
+<div class="hud hud-top">
+  <div class="hud-title">
+    <div class="kicker">Exhibit 10 · Chord Diagram · Aggregated Flows</div>
+    <h1>关系之<em>环</em></h1>
+    <div class="sub">跳出单个节点,看<b style="color:var(--ink)">领域之间的关系总量</b>:丝带越粗,两个领域绑得越深。<b style="color:var(--ink)">悬停领域弧</b>看它的全部去向,悬停丝带看具体数字。</div>
+  </div>
+  <a class="back" href="index.html">◀ 星图馆</a>
+</div>
+
+<div class="legend" id="legend"></div>
+<div class="readout"><div><b>8×8</b> FLOW MATRIX · <b id="stat-t">—</b> TOTAL WEIGHT</div></div>
+<div class="tip" id="tip"><div class="t-name"></div><div class="t-meta"></div></div>
+
+<script src="data.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script>
+const DOMAINS = KG.DOMAINS;
+const N = DOMAINS.length;
+const svg = d3.select('#stage');
+const Wv = innerWidth, Hv = innerHeight;
+const R = Math.min(Wv, Hv) / 2 - 150;
+svg.attr('viewBox', [-Wv / 2, -Hv / 2, Wv, Hv]);
+const g = svg.append('g');
+
+/* ---------- 领域间流量矩阵 ---------- */
+/* 只看跨域流量 —— 域内关联(对角线)在别的展厅已经讲过了 */
+const M = Array.from({ length: N }, () => new Array(N).fill(0));
+KG.links.forEach(l => {
+  const a = KG.byId[l.source].domain, b = KG.byId[l.target].domain;
+  if (a !== b) { M[a][b] += l.weight; M[b][a] += l.weight; }
+});
+const total = M.flat().reduce((s, v) => s + v, 0) / 2;
+document.getElementById('stat-t').textContent = Math.round(total);
+
+const chord = d3.chord().padAngle(0.05).sortSubgroups(d3.descending)(M);
+const arcGen = d3.arc().innerRadius(R).outerRadius(R + 16);
+const ribbonGen = d3.ribbon().radius(R - 4);
+
+/* ---------- 丝带(域间渐变) ---------- */
+const defs = svg.append('defs');
+const ribbons = g.append('g').selectAll('path')
+  .data(chord).join('path')
+  .attr('class', 'ribbon')
+  .attr('d', ribbonGen)
+  .attr('fill', (d, i) => {
+    const ca = DOMAINS[d.source.index].color, cb = DOMAINS[d.target.index].color;
+    if (d.source.index === d.target.index) return ca;
+    const a0 = (d.source.startAngle + d.source.endAngle) / 2 - Math.PI / 2;
+    const a1 = (d.target.startAngle + d.target.endAngle) / 2 - Math.PI / 2;
+    const gr = defs.append('linearGradient')
+      .attr('id', 'rg' + i).attr('gradientUnits', 'userSpaceOnUse')
+      .attr('x1', Math.cos(a0) * R).attr('y1', Math.sin(a0) * R)
+      .attr('x2', Math.cos(a1) * R).attr('y2', Math.sin(a1) * R);
+    gr.append('stop').attr('offset', 0).attr('stop-color', ca);
+    gr.append('stop').attr('offset', 1).attr('stop-color', cb);
+    return `url(#rg${i})`;
+  })
+  .attr('opacity', 0.55);
+
+/* ---------- 领域弧与标签 ---------- */
+const groups = g.append('g').selectAll('g')
+  .data(chord.groups).join('g');
+groups.append('path')
+  .attr('class', 'arc')
+  .attr('d', arcGen)
+  .attr('fill', d => DOMAINS[d.index].color)
+  .style('--c', d => DOMAINS[d.index].color);
+groups.each(function (d) {
+  const mid = (d.startAngle + d.endAngle) / 2;
+  const deg = mid * 180 / Math.PI - 90;
+  const flip = mid > Math.PI / 2 && mid < Math.PI * 1.5;
+  const sel = d3.select(this);
+  sel.append('text')
+    .attr('class', 'dom-label')
+    .attr('transform', `rotate(${deg}) translate(${R + 34},0) rotate(${flip ? 180 : 0})`)
+    .attr('text-anchor', flip ? 'end' : 'start').attr('dy', '0.32em')
+    .text(DOMAINS[d.index].name);
+  sel.append('text')
+    .attr('class', 'dom-count')
+    .attr('transform', `rotate(${deg}) translate(${R + 34},0) rotate(${flip ? 180 : 0})`)
+    .attr('text-anchor', flip ? 'end' : 'start').attr('dy', '1.9em')
+    .text(DOMAINS[d.index].en + ' · ' + Math.round(d.value));
+});
+
+/* ---------- 中心读数 ---------- */
+const center = g.append('g').attr('class', 'center-stat');
+center.append('text').attr('class', 'big').attr('y', 6).text(Math.round(total));
+center.append('text').attr('class', 'small').attr('y', 34).text('TOTAL FLOW');
+
+/* ---------- 交互 ---------- */
+const tip = document.getElementById('tip');
+groups.on('mouseenter', (_, d) => {
+  svg.classed('focus', true);
+  ribbons.classed('on', r => r.source.index === d.index || r.target.index === d.index);
+}).on('mouseleave', () => { svg.classed('focus', false); ribbons.classed('on', false); });
+
+ribbons
+  .on('mouseenter', function (e, d) {
+    svg.classed('focus', true);
+    d3.select(this).classed('on', true).raise();
+    const A = DOMAINS[d.source.index], B = DOMAINS[d.target.index];
+    tip.classList.add('show');
+    tip.style.setProperty('--tip-c', A.color);
+    tip.querySelector('.t-name').textContent = d.source.index === d.target.index ? `${A.name} 内部` : `${A.name} ↔ ${B.name}`;
+    tip.querySelector('.t-meta').textContent = `关联强度 ${Math.round(d.source.value)} · 占全图 ${(d.source.value / total * 100).toFixed(1)}%`;
+  })
+  .on('mousemove', e => { tip.style.left = (e.clientX + 16) + 'px'; tip.style.top = (e.clientY + 12) + 'px'; })
+  .on('mouseleave', function () { svg.classed('focus', false); d3.select(this).classed('on', false); tip.classList.remove('show'); });
+
+/* ---------- 入场:环先亮,丝带逐条舒展 ---------- */
+groups.attr('opacity', 0).transition().duration(600).delay((d, i) => i * 70).attr('opacity', 1);
+ribbons.attr('opacity', 0).transition().duration(800).delay((d, i) => 400 + i * 22).ease(d3.easeCubicOut).attr('opacity', 0.55);
+
+const legend = document.getElementById('legend');
+DOMAINS.forEach(d => {
+  const el = document.createElement('span');
+  el.className = 'chip'; el.style.setProperty('--c', d.color);
+  el.innerHTML = `<i></i>${d.name}`;
+  legend.appendChild(el);
+});
+</script>
+</body>
+</html>

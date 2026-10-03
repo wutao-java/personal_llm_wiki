@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>01 基线对话 · Chat Templates</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+</head>
+<body data-ai-name="Assistant">
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="sb-head"><span class="logo">💬</span><a href="index.html">Chat Templates</a><span class="tpl">TPL-01</span></div>
+    <button class="new-chat" id="new-chat" data-silent="1"><b>＋</b> 新建对话</button>
+    <nav class="convs">
+      <div class="group">今天</div>
+      <button class="item on">AI 客服技术方案调研</button>
+      <button class="item">帮我改一段周报</button>
+      <div class="group">昨天</div>
+      <button class="item">对比 Postgres 和 MySQL 的全文检索</button>
+      <button class="item">给孩子起个英文名</button>
+      <div class="group">前 7 天</div>
+      <button class="item">解释一下 KV Cache</button>
+      <button class="item">日语 N2 语法整理</button>
+      <button class="item">团建去哪玩</button>
+    </nav>
+    <div class="sb-foot"><span class="ava">木</span>木鱼<span class="plan">PRO</span></div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="crumb"><a href="index.html">模板库</a> / <b>01 基线对话</b></div>
+      <span class="model-pill"><i></i>Nova-4.5 ▾</span>
+      <div class="tb-spacer"></div>
+      <button class="tb-btn" id="theme-toggle" data-silent="1"></button>
+      <button class="tb-btn">分享</button>
+    </header>
+
+    <div class="thread-wrap" id="thread-wrap">
+      <div class="thread" id="thread">
+
+        <div class="msg user">
+          <div class="ava">你</div>
+          <div class="body">
+            <div class="who">你 <span class="t">14:02</span></div>
+            <div class="prose">帮我调研一下,2026 年做 AI 客服该选什么技术方案?</div>
+          </div>
+        </div>
+
+        <div class="msg ai">
+          <div class="ava">AI</div>
+          <div class="body">
+            <div class="who">Assistant <span class="t">14:02</span></div>
+            <details class="think">
+              <summary>已深度思考 · 用时 6 秒</summary>
+              <div class="think-body">
+                用户问的是"AI 客服技术方案",需要先拆解:这既可能指自建(模型 + RAG + 工单集成),也可能指采购 SaaS。考虑到用户没说团队规模,我应该按"自建 vs 采购"两条线给结论,并给出 2026 年的关键变量:模型价格下降、Agent 框架成熟度、多轮工单处理能力。先给结论,再给依据。
+              </div>
+            </details>
+            <div class="prose">
+              <p>可以,先给结论:<strong>2026 年做 AI 客服,方案取决于你要"答问题"还是"办事情"</strong>。前者是 RAG 问答,已经是成熟技术;后者是 Agent 接管工单流程,今年才真正可用。</p>
+              <h4>路线 A · RAG 问答型(2~4 周上线)</h4>
+              <ul>
+                <li><strong>检索层</strong>:知识库向量化 + 混合检索(BM25 + 向量),命中率是客服场景的生命线;</li>
+                <li><strong>生成层</strong>:中杯模型足够,重点花在<strong>引用溯源</strong>上 —— 客服答错要能查到是哪篇文档的锅;</li>
+                <li><strong>兜底</strong>:置信度低于阈值直接转人工,不硬答。</li>
+              </ul>
+              <h4>路线 B · Agent 办事型(2~3 个月)</h4>
+              <ul>
+                <li>接工单系统、订单系统的<strong>写接口</strong>,让 AI 真的能退款、改地址、开发票;</li>
+                <li>必须有<strong>执行链路可视化</strong>和人工审批卡点,否则出事故没法追责;</li>
+                <li>框架上 LangGraph 一类的状态机编排已是事实标准。</li>
+              </ul>
+              <p>一个常被低估的建议:先用路线 A 上线攒真实问题分布,三个月后再决定 B 要不要做 —— 大多数客服流量其实 80% 是问答。</p>
+            </div>
+            <div class="msg-actions">
+              <button>📋 复制</button><button>🔄 重新生成</button><button>👍</button><button>👎</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="msg user">
+          <div class="ava">你</div>
+          <div class="body">
+            <div class="who">你 <span class="t">14:05</span></div>
+            <div class="prose">路线 A 的混合检索,给我一段能直接跑的伪代码</div>
+          </div>
+        </div>
+
+        <div class="msg ai" id="live-msg">
+          <div class="ava">AI</div>
+          <div class="body">
+            <div class="who">Assistant <span class="t">14:05</span></div>
+            <details class="think" id="live-think" style="display:none">
+              <summary>已思考 · 用时 3 秒</summary>
+              <div class="think-body">用户要伪代码,重点是把"两路召回 + 融合排序"的骨架写清楚,RRF 融合是最常用且无需调参的做法,给 RRF。</div>
+            </details>
+            <div class="prose" id="live-prose"></div>
+            <div class="msg-actions" id="live-actions" style="opacity:0">
+              <button>📋 复制</button><button>🔄 重新生成</button><button>👍</button><button>👎</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="composer">
+      <div class="inner">
+        <div class="suggestions" id="empty-sugg" style="display:none">
+          <button>帮我调研 AI 客服技术方案</button>
+          <button>写一份竞品分析提纲</button>
+          <button>解释一下 RAG 和微调的区别</button>
+        </div>
+        <div class="c-box">
+          <textarea rows="1" placeholder="给 Assistant 发消息…(演示环境,回复为固定文案)"></textarea>
+          <button class="send" data-silent="1">↑</button>
+        </div>
+        <div class="c-hint"><b>Enter</b> 发送 · <b>Shift+Enter</b> 换行 · 模型可能出错,重要信息请核验</div>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script src="shared.js"></script>
+<script>
+CT.init();
+
+/* 入场:最后一条 AI 消息现场流式打出 */
+const LIVE_HTML = `
+<p>好,给你两路召回 + RRF 融合的最小骨架:</p>
+<div class="codeblock">def hybrid_search(query, k=8):
+    # 两路召回
+    hits_bm25   = bm25_index.search(query, top=30)
+    hits_vector = vec_index.search(embed(query), top=30)
+
+    # RRF 融合:1/(60+rank),无需调权重
+    score = defaultdict(float)
+    for rank, doc in enumerate(hits_bm25):
+        score[doc.id] += 1 / (60 + rank)
+    for rank, doc in enumerate(hits_vector):
+        score[doc.id] += 1 / (60 + rank)
+
+    return top_k(score, k)        # 送进重排器或直接给 LLM</div>
+<p>真实上线时补三件事:<code>查询改写</code>(口语 → 检索友好)、<code>重排器</code>(bge-reranker 一类)、<code>命中日志</code>(没有它你永远不知道知识库缺什么)。</p>`;
+
+(async function () {
+  const think = document.getElementById('live-think');
+  const prose = document.getElementById('live-prose');
+  await new Promise(r => setTimeout(r, 600));
+  think.style.display = '';
+  await CT.stream(prose, LIVE_HTML, { cps: 120 });
+  document.getElementById('live-actions').style.opacity = '';
+})();
+
+/* 新建对话 → 空态演示(三态之一) */
+document.getElementById('new-chat').addEventListener('click', () => {
+  const thread = document.getElementById('thread');
+  document.querySelectorAll('.convs .item').forEach(i => i.classList.remove('on'));
+  thread.innerHTML = `
+    <div class="empty">
+      <div class="glyph">💬</div>
+      <h3>开始新对话</h3>
+      <p>这是空态:不给用户一张白纸,给引导。下面的建议芯片点一下就会发送。</p>
+    </div>`;
+  document.getElementById('empty-sugg').style.display = '';
+});
+document.getElementById('empty-sugg').addEventListener('click', e => {
+  if (e.target.tagName !== 'BUTTON') return;
+  const ta = document.querySelector('.c-box textarea');
+  ta.value = e.target.textContent;
+  document.getElementById('empty-sugg').style.display = 'none';
+  const emptyEl = document.querySelector('.empty'); if (emptyEl) emptyEl.remove();
+  document.querySelector('.c-box .send').click();
+});
+</script>
+</body>
+</html>

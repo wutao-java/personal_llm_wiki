@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# 编译式 RAG 自动化增量管线 · cron/launchd 包装脚本模板
+# 用途：让 launchd(macOS) / cron(Linux) 每隔 StartInterval 无人值守跑完一整轮。
+# 三个工业级要点都在下面标注，删任何一条都会在 cron 环境（而非你的 shell）里踩坑。
+set -euo pipefail
+
+# 要点 1：显式 export —— cron/launchd 没有你登录 shell 的 PATH 与环境变量
+export GBRAIN_HOME="$HOME/.gbrain-pipeline"                 # 专用 brain，本机 APFS 路径
+export DASHSCOPE_API_KEY="sk-替换成你的key"                  # cron 无 shell 上下文，须显式 export
+export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"         # 让脚本能找到 gbrain（或改用绝对路径）
+
+# 要点 2：PGLite 单写入 —— 写入前先停可能常驻的 serve，避免写锁冲突
+pkill -f "gbrain serve" 2>/dev/null || true
+
+# 要点 3：路径含空格一律加引号
+SOURCE_REPO="$HOME/my-knowledge-repo"
+LOG_DIR="$HOME/.gbrain-pipeline-logs"
+mkdir -p "$LOG_DIR"
+
+# 1. 连接器写入新数据（换成你自己的拉取逻辑；留 --start-idx 增量接口避免重名）
+python3 "$HOME/connectors/run-all.py" --out "$SOURCE_REPO"
+
+# 2. git commit —— 增量 sync 的锚点：没 commit 的文件不会被 sync
+git -C "$SOURCE_REPO" add --all
+git -C "$SOURCE_REPO" commit -m "cron cycle $(date +%s)" || true
+
+# 3. 增量编译 → 回填 embedding（安全网，必须链上）→ self-wiring 建图
+gbrain sync --repo "$SOURCE_REPO" --no-pull --retry-failed --yes
+gbrain embed --stale
+gbrain extract --stale
+
+# 4. 健康巡检 —— 2>/dev/null 把 phase 日志导走，保证纯 JSON 供 jq/脚本解析
+gbrain doctor --json 2>/dev/null > "$LOG_DIR/doctor-$(date +%s).json"
+
+# 可选：部署自测断言 embeddings 100%（红项 exit 1，launchd 日志可见）
+# python3 scripts/check_pipeline_health.py "$LOG_DIR/doctor-$(date +%s).json"

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>知识图谱 · 星图馆</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  html, body { overflow: auto; }
+  body { cursor: default; }
+
+  .wrap { min-height: 100vh; display: flex; flex-direction: column; padding: 42px clamp(24px, 5vw, 80px) 40px; }
+
+  header { margin-bottom: 38px; }
+  .masthead { display: flex; align-items: baseline; gap: 22px; flex-wrap: wrap; }
+  h1 {
+    font-family: var(--display); font-weight: 800;
+    font-size: clamp(34px, 6vw, 72px); letter-spacing: .01em;
+    background: linear-gradient(100deg, #dbe6f5 30%, #22d3ee 60%, #d946ef 90%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 26px rgba(34,211,238,.2));
+  }
+  .masthead .en {
+    font-family: var(--display); font-weight: 300; font-size: 13px;
+    letter-spacing: .3em; color: var(--ink-dim);
+  }
+  header p { margin-top: 14px; font-size: 12px; color: var(--ink-dim); max-width: 72ch; line-height: 1.9; }
+  header p b { color: var(--ink); font-weight: 400; }
+
+  .grid {
+    display: grid; gap: 14px; flex: 1;
+    grid-template-columns: repeat(3, 1fr);
+  }
+  @media (max-width: 980px) { .grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    position: relative; display: flex; flex-direction: column; justify-content: flex-end;
+    min-height: 250px; padding: 22px; text-decoration: none;
+    border: 1px solid var(--line); background: var(--panel); overflow: hidden;
+    transition: transform .3s cubic-bezier(.2,.8,.2,1), border-color .3s, box-shadow .3s;
+    animation: hud-in .8s cubic-bezier(.2,.8,.2,1) both;
+  }
+  .card:nth-child(1) { animation-delay: .05s } .card:nth-child(2) { animation-delay: .12s }
+  .card:nth-child(3) { animation-delay: .19s } .card:nth-child(4) { animation-delay: .26s }
+  .card:nth-child(5) { animation-delay: .33s } .card:nth-child(6) { animation-delay: .4s }
+  .card:nth-child(7) { animation-delay: .47s } .card:nth-child(8) { animation-delay: .54s }
+  .card:nth-child(9) { animation-delay: .61s } .card:nth-child(10) { animation-delay: .68s }
+  .card:hover {
+    transform: translateY(-5px);
+    border-color: var(--ac);
+    box-shadow: 0 18px 50px -18px var(--ac), inset 0 0 40px -30px var(--ac);
+  }
+
+  .card .num {
+    position: absolute; top: 16px; left: 20px;
+    font-family: var(--display); font-weight: 300; font-size: 13px;
+    letter-spacing: .18em; color: var(--ink-faint);
+  }
+  .card .tech {
+    position: absolute; top: 16px; right: 20px;
+    font-size: 10px; letter-spacing: .08em; color: var(--ac);
+    border: 1px solid color-mix(in srgb, var(--ac) 40%, transparent);
+    padding: 3px 8px;
+  }
+  .card h2 {
+    font-family: var(--display); font-weight: 800; font-size: 24px;
+    color: var(--ink); margin-bottom: 6px;
+    text-shadow: 0 0 22px color-mix(in srgb, var(--ac) 55%, transparent);
+  }
+  .card .desc { font-size: 11px; color: var(--ink-dim); line-height: 1.75; }
+  .card .go {
+    margin-top: 12px; font-size: 10px; letter-spacing: .28em; color: var(--ac);
+    opacity: 0; transform: translateX(-6px); transition: all .3s;
+  }
+  .card:hover .go { opacity: 1; transform: none; }
+
+  /* —— 真实渲染截图预览 —— */
+  .shot {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; object-position: center;
+    opacity: .6; transform: scale(1.001);
+    transition: opacity .35s, transform .5s cubic-bezier(.2,.8,.2,1);
+    pointer-events: none;
+  }
+  .card:hover .shot { opacity: 1; transform: scale(1.05); }
+  .card::before {
+    content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    background: linear-gradient(180deg, rgba(4,6,13,.55) 0%, transparent 30%, transparent 45%, rgba(4,6,13,.92) 82%);
+  }
+  .card > *:not(.shot) { position: relative; z-index: 2; }
+  .card .num, .card .tech { position: absolute; z-index: 2; }
+
+  /* —— 每张卡的 CSS 动态背景 —— */
+  .vig { position: absolute; inset: 0; opacity: .5; transition: opacity .3s; pointer-events: none; }
+  .card:hover .vig { opacity: .9; }
+
+  .vig-stars {
+    background-image:
+      radial-gradient(1.5px 1.5px at 20% 30%, var(--ac), transparent),
+      radial-gradient(1px 1px at 55% 15%, #dbe6f5, transparent),
+      radial-gradient(2px 2px at 75% 45%, var(--ac), transparent),
+      radial-gradient(1px 1px at 35% 60%, #dbe6f5, transparent),
+      radial-gradient(1.5px 1.5px at 85% 70%, var(--ac), transparent),
+      radial-gradient(1px 1px at 10% 80%, #dbe6f5, transparent),
+      radial-gradient(1.5px 1.5px at 60% 85%, var(--ac), transparent);
+    animation: twinkle 3.4s ease-in-out infinite alternate;
+  }
+  @keyframes twinkle { from { opacity: .3; } to { opacity: .85; } }
+
+  .vig-orb {
+    background: radial-gradient(circle at 68% 34%, color-mix(in srgb, var(--ac) 55%, transparent), transparent 42%);
+    animation: breathe 3.2s ease-in-out infinite;
+  }
+  @keyframes breathe { 50% { transform: scale(1.25); opacity: .85; } }
+
+  .vig-contour {
+    background: repeating-radial-gradient(circle at 70% 40%,
+      transparent 0 14px, color-mix(in srgb, var(--ac) 30%, transparent) 14px 15px);
+    animation: drift 14s linear infinite;
+  }
+  @keyframes drift { to { background-position: 40px 24px; } }
+
+  .vig-fiber {
+    background:
+      radial-gradient(140% 90% at 0% 100%, transparent 58%, color-mix(in srgb, var(--ac) 35%, transparent) 59% 60%, transparent 61%),
+      radial-gradient(120% 80% at 100% 0%, transparent 48%, color-mix(in srgb, var(--ac) 30%, transparent) 49% 50%, transparent 51%),
+      radial-gradient(160% 110% at 20% -10%, transparent 63%, color-mix(in srgb, var(--ac) 25%, transparent) 64% 65%, transparent 66%);
+    animation: breathe 4.5s ease-in-out infinite;
+  }
+
+  .vig-grid {
+    background-image:
+      repeating-linear-gradient(0deg, transparent 0 17px, color-mix(in srgb, var(--ac) 22%, transparent) 17px 18px),
+      repeating-linear-gradient(90deg, transparent 0 17px, color-mix(in srgb, var(--ac) 22%, transparent) 17px 18px),
+      radial-gradient(2.5px 2.5px at 30% 40%, var(--ac), transparent),
+      radial-gradient(2.5px 2.5px at 65% 25%, var(--ac), transparent),
+      radial-gradient(2.5px 2.5px at 48% 70%, var(--ac), transparent);
+    animation: twinkle 2.6s steps(2) infinite alternate;
+  }
+
+  .vig-hive {
+    background: repeating-conic-gradient(from 0deg at 72% 38%,
+      color-mix(in srgb, var(--ac) 28%, transparent) 0deg 2deg, transparent 2deg 45deg);
+    animation: spin 26s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg) } }
+
+  footer { margin-top: 28px; font-size: 10px; letter-spacing: .2em; color: var(--ink-faint); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+<div class="wrap">
+  <header>
+    <div class="kicker" style="display:flex;align-items:center;gap:10px;font-size:10px;letter-spacing:.32em;color:var(--ink-dim);margin-bottom:12px;">赋范空间 · 知识图谱可视化 · 十种范式在线体验</div>
+    <div class="masthead">
+      <h1>星图馆</h1>
+      <span class="en">同一张图谱 · 十种打开方式</span>
+    </div>
+    <p>同一张 <b>AI 领域知识图谱</b>（8 大领域 · 120 个知识点 · 约 340 条关联），用十种截然不同的范式呈现——
+       从<b>六万节点的 GPU 星云</b>到<b>庞加莱圆盘里的双曲空间</b>。每一种都在回答同一个问题：关系，应该长什么样？
+       点开任意展厅即可在线体验；把你项目里的图谱数据接进来，这十种形态可以直接复用。</p>
+  </header>
+
+  <nav class="grid">
+    <a class="card" href="01-cosmos.html" style="--ac:#22d3ee">
+      <img class="shot" src="previews/01.jpg" alt="GPU 星云真实渲染截图">
+      <span class="num">展厅 01</span><span class="tech">cosmos.gl · GPU 力仿真</span>
+      <h2>GPU 星云</h2>
+      <div class="desc">60,000 节点的力仿真整个跑在 GPU 上,实时收敛成星云。Cosmograph 同款引擎,规模是传统连线图的一千倍。</div>
+      <span class="go">进入展厅 →</span>
+    </a>
+    <a class="card" href="02-bloom3d.html" style="--ac:#d946ef">
+      <img class="shot" src="previews/02.jpg" alt="辉光深空真实渲染截图">
+      <span class="num">展厅 02</span><span class="tech">three.js · 辉光后处理</span>
+      <h2>辉光深空</h2>
+      <div class="desc">3D 力导向 + UnrealBloom 辉光后处理 + 沿边流动的数据粒子。点击节点,摄影机飞跃过去。</div>
+      <span class="go">进入展厅 →</span>
+    </a>
+    <a class="card" href="03-terrain.html" style="--ac:#0d9488">
+      <img class="shot" src="previews/03.jpg" alt="语义地形图真实渲染截图">
+      <span class="num">展厅 03</span><span class="tech">d3 等高线 · Canvas</span>
+      <h2>语义地形图</h2>
+      <div class="desc">不画连线:4,800 个知识点按语义嵌入落成大陆,密度即海拔。Nomic Atlas / WizMap 的"数据地图"范式。</div>
+      <span class="go">进入展厅 →</span>
+    </a>
+    <a class="card" href="04-bundling.html" style="--ac:#d97706">
+      <img class="shot" src="previews/04.jpg" alt="光纤束真实渲染截图">
+      <span class="num">展厅 04</span><span class="tech">d3 · 层次边捆绑</span>
+      <h2>光纤束</h2>
+      <div class="desc">层次边捆绑:跨领域关联沿知识树的路径弯曲汇流,乱麻变成主干光缆。悬停点亮任意概念的全部连接。</div>
+      <span class="go">进入展厅 →</span>
+    </a>
+    <a class="card" href="05-matrix.html" style="--ac:#3b82f6">
+      <img class="shot" src="previews/05.jpg" alt="星阵真实渲染截图">
+      <span class="num">展厅 05</span><span class="tech">Canvas · 可重排矩阵</span>
+      <h2>星阵</h2>
+      <div class="desc">120×120 邻接矩阵:稠密图的正确打开方式。切换排序,看 700 个亮点集体迁徙、社区结构瞬间显形。</div>
+      <span class="go">进入展厅 →</span>
+    </a>
+    <a class="card" href="06-hive.html" style="--ac:#f43f5e">
+      <img class="shot" src="previews/06.jpg" alt="结构之弦真实渲染截图">
+      <span class="num">展厅 06</span><span class="tech">d3 · 布局变形</span>
+      <h2>结构之弦</h2>
+      <div class="desc">Hive Plot ⇄ Arc Diagram 全场变形:确定性布局按"角色轴 × 度数"精确落位,可复现、可比较。</div>
+      <span class="go">进入展厅 →</span>
+    </a>
+    <a class="card" href="07-temporal.html" style="--ac:#65a30d">
+      <img class="shot" src="previews/07.jpg" alt="时间演化真实渲染截图">
+      <span class="num">展厅 07</span><span class="tech">Canvas · 时间轴</span>
+      <h2>时间演化</h2>
+      <div class="desc">1940 → 2026 的延时摄影:120 个概念按真实诞生年份逐年出现、彼此勾连,86 年长成 AI 版图。可拖动时间轴。</div>
+      <span class="go">进入展厅 →</span>
+    </a>
+    <a class="card" href="08-hyperbolic.html" style="--ac:#22d3ee">
+      <img class="shot" src="previews/08.jpg" alt="双曲空间真实渲染截图">
+      <span class="num">展厅 08</span><span class="tech">庞加莱圆盘 · 双曲几何</span>
+      <h2>双曲空间</h2>
+      <div class="desc">整棵知识树塞进庞加莱圆盘:焦点被放大,无穷远压缩到边缘。拖拽移动焦点,双击把任意节点拉到中心。</div>
+      <span class="go">进入展厅 →</span>
+    </a>
+    <a class="card" href="09-terrain3d.html" style="--ac:#3b82f6">
+      <img class="shot" src="previews/09.jpg" alt="语义山脉真实渲染截图">
+      <span class="num">展厅 09</span><span class="tech">three.js · 3D 地形</span>
+      <h2>语义山脉</h2>
+      <div class="desc">知识密度隆起成真实 3D 山体,全息线框 + 悬浮标牌,像看 Google Earth 一样飞行漫游知识地貌。</div>
+      <span class="go">进入展厅 →</span>
+    </a>
+    <a class="card" href="10-chord.html" style="--ac:#ea580c">
+      <img class="shot" src="previews/10.jpg" alt="关系之环真实渲染截图">
+      <span class="num">展厅 10</span><span class="tech">d3 · 和弦图</span>
+      <h2>关系之环</h2>
+      <div class="desc">跳出节点看宏观:8 大领域围环,跨域关系汇成粗细不等的渐变丝带 —— 哪两个领域绑得最深,一眼看穿。</div>
+      <span class="go">进入展厅 →</span>
+    </a>
+  </nav>
+
+  <footer>
+    <span>同一份数据 · 十种投影</span>
+    <span>展厅需联网加载渲染库 · 建议用 Chrome / Edge 打开</span>
+  </footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>06 深度研究 · Chat Templates</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+/* 研究进度卡 */
+.research-card {
+  border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface);
+  box-shadow: var(--shadow); margin: 10px 0; max-width: 640px; overflow: hidden;
+}
+.rc-head { display: flex; align-items: center; gap: 10px; padding: 13px 16px; border-bottom: 1px solid var(--border); }
+.rc-head .rc-ico { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; font-size: 14px; background: var(--accent-soft); }
+.rc-head b { font-size: 13.5px; display: block; }
+.rc-head small { font-family: var(--mono); font-size: 10px; color: var(--faint); }
+.rc-elapsed { margin-left: auto; text-align: right; }
+.rc-elapsed b { font-family: var(--mono); font-size: 15px; font-weight: 500; }
+.rc-elapsed span { font-size: 9.5px; color: var(--faint); display: block; }
+/* 进度条 */
+.rc-bar { height: 3px; background: var(--surface-2); }
+.rc-bar b { display: block; height: 100%; width: 0; background: var(--accent); transition: width .5s ease; }
+/* 阶段 */
+.phases { padding: 12px 16px; display: grid; gap: 8px; }
+.phase { display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--dim); }
+.phase .p-ico {
+  width: 16px; height: 16px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  font-size: 9px; font-weight: 700; border: 1.5px solid var(--border-hi); color: transparent;
+}
+.phase.done { color: var(--ink); }
+.phase.done .p-ico { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.phase.running { color: var(--ink); font-weight: 500; }
+.phase.running .p-ico { border-color: var(--accent); border-top-color: transparent; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.phase .p-note { margin-left: auto; font-family: var(--mono); font-size: 10px; color: var(--faint); }
+/* 信源池 */
+.src-pool { border-top: 1px solid var(--border); padding: 11px 16px; }
+.src-pool .sp-label { font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; color: var(--faint); margin-bottom: 8px; display: flex; justify-content: space-between; }
+.src-pool .favs { display: flex; flex-wrap: wrap; gap: 5px; min-height: 20px; }
+.src-pool .favs i {
+  width: 18px; height: 18px; border-radius: 5px; flex: none;
+  display: grid; place-items: center; font-size: 8.5px; font-weight: 700; color: #fff;
+  animation: pop .3s cubic-bezier(.2,.9,.3,1.4) backwards;
+}
+@keyframes pop { from { transform: scale(.3); opacity: 0; } }
+/* 实时日志行 */
+.rc-log { border-top: 1px solid var(--border); background: var(--surface-2); padding: 8px 16px; font-family: var(--mono); font-size: 10.5px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rc-log::before { content: '▸ '; color: var(--accent); }
+/* 报告 */
+.report { border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow); margin: 10px 0; max-width: 640px; }
+.rp-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.rp-head b { font-size: 14.5px; }
+.rp-head .pill { margin-left: auto; }
+.rp-toc { padding: 12px 18px; border-bottom: 1px dashed var(--border); font-size: 12.5px; color: var(--dim); display: grid; gap: 5px; }
+.rp-toc a { color: var(--dim); text-decoration: none; }
+.rp-toc a:hover { color: var(--accent); }
+.rp-body { padding: 14px 18px 18px; }
+.rp-body h4 { font-size: 13.5px; margin: 12px 0 6px; }
+.rp-body h4:first-child { margin-top: 0; }
+.rp-body p, .rp-body li { font-size: 13px; line-height: 1.8; color: var(--ink); }
+.rp-body ul { padding-left: 18px; margin: 6px 0; }
+.rp-body .cite { font-family: var(--mono); font-size: 9.5px; color: var(--accent); background: var(--accent-soft); border-radius: 4px; padding: 0 4px; margin: 0 2px; vertical-align: 2px; }
+.rp-foot { display: flex; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--border); background: var(--surface-2); border-radius: 0 0 var(--r-lg) var(--r-lg); }
+.rp-foot button { font-size: 12px; font-weight: 500; color: var(--dim); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: 7px 13px; }
+.rp-foot button:hover { border-color: var(--border-hi); color: var(--ink); }
+</style>
+</head>
+<body data-ai-name="研究员">
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="sb-head"><span class="logo">💬</span><a href="index.html">Chat Templates</a><span class="tpl">TPL-06</span></div>
+    <button class="new-chat"><b>＋</b> 新研究</button>
+    <nav class="convs">
+      <div class="group">进行中</div>
+      <button class="item on">AI 客服技术方案调研</button>
+      <div class="group">已交付</div>
+      <button class="item">具身智能赛道图谱(28 源)</button>
+      <button class="item">出海支付合规要求(41 源)</button>
+      <button class="item">竞品定价策略分析(19 源)</button>
+    </nav>
+    <div class="sb-foot"><span class="ava">木</span>木鱼<span class="plan">PRO</span></div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="crumb"><a href="index.html">模板库</a> / <b>06 深度研究</b></div>
+      <span class="model-pill"><i></i>Deep Research · 深潜模式 ▾</span>
+      <div class="tb-spacer"></div>
+      <button class="tb-btn" id="theme-toggle" data-silent="1"></button>
+      <button class="tb-btn">分享</button>
+    </header>
+
+    <div class="thread-wrap" id="thread-wrap">
+      <div class="thread" id="thread">
+
+        <div class="msg user">
+          <div class="ava">你</div>
+          <div class="body"><div class="who">你 <span class="t">14:02</span></div>
+            <div class="prose">深入调研:2026 年做 AI 客服该选什么技术方案?多查些来源,给我一份带引用的完整报告。</div>
+          </div>
+        </div>
+
+        <div class="msg ai">
+          <div class="ava">AI</div>
+          <div class="body">
+            <div class="who">研究员 <span class="t">14:02</span></div>
+            <div class="prose"><p>收到,预计需要几分钟。研究过程全程可见,你可以随时打字调整方向:</p></div>
+
+            <div class="research-card">
+              <div class="rc-head">
+                <span class="rc-ico">🔬</span>
+                <div><b>AI 客服技术方案 · 深度调研</b><small id="rc-status">RUNNING · 阶段 1/5</small></div>
+                <div class="rc-elapsed"><b id="rc-time">0:00</b><span>已用时</span></div>
+              </div>
+              <div class="rc-bar"><b id="rc-bar"></b></div>
+              <div class="phases" id="phases"></div>
+              <div class="src-pool">
+                <div class="sp-label"><span>信源池</span><span id="src-cnt">0 篇入库</span></div>
+                <div class="favs" id="favs"></div>
+              </div>
+              <div class="rc-log" id="rc-log">正在初始化研究计划…</div>
+            </div>
+
+            <div class="msg-actions" style="opacity:1"><button id="pause-btn">⏸ 暂停</button><button>✕ 终止并出中期报告</button></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="composer">
+      <div class="inner">
+        <div class="c-box">
+          <textarea rows="1" placeholder="研究进行中也可以说话,比如“重点看合规部分”…(演示环境)"></textarea>
+          <button class="send" data-silent="1">↑</button>
+        </div>
+        <div class="c-hint">长任务形态:<b>过程可见 · 可打断 · 可中途转向</b>,报告交付后引用可溯源</div>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script src="shared.js"></script>
+<script>
+CT.init();
+
+/* ---------------- 阶段与信源模拟 ---------------- */
+const PHASES = [
+  { name: '拆解问题,生成检索矩阵', note: '4 个子问题' },
+  { name: '广度检索', note: '3 轮 · 46 条结果' },
+  { name: '深读高价值来源', note: '9 篇全文' },
+  { name: '交叉验证冲突数据', note: '3 组冲突' },
+  { name: '撰写报告与引用核对', note: '2,400 字' },
+];
+const LOGS = [
+  '检索 "智能客服 渗透率 2025 报告"… 命中 18 条',
+  '检索 "hybrid retrieval FAQ benchmark"… 命中 11 条',
+  '深读 iresearch-report.cn 《智能客服行业研究》…',
+  '深读 tech.meixi.com 检索 AB 实验复盘…',
+  '发现冲突:自动化率 37% vs 52%,口径不同,标注区间',
+  '核对引用 12 处 → 全部可定位到原文段落',
+];
+const FAVS = ['艾','美','IQ','Gt','政','知','Dv','36','虎'];
+const FAVC = ['#e0894f','#5b8def','#c85f8d','#4fae7e','#8d78d4','#4a90a4','#d4a373','#e76f51','#6d9dc5'];
+
+const phasesEl = document.getElementById('phases');
+PHASES.forEach((p, i) => {
+  const el = document.createElement('div');
+  el.className = 'phase'; el.id = 'ph-' + i;
+  el.innerHTML = '<span class="p-ico">✓</span>' + p.name + '<span class="p-note" id="pn-' + i + '"></span>';
+  phasesEl.appendChild(el);
+});
+
+const t0 = performance.now();
+let paused = false;
+setInterval(() => {
+  if (paused) return;
+  const s = Math.floor((performance.now() - t0) / 1000);
+  document.getElementById('rc-time').textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}, 500);
+document.getElementById('pause-btn').addEventListener('click', function () {
+  paused = !paused;
+  this.textContent = paused ? '▶ 继续' : '⏸ 暂停';
+  CT.toast(paused ? '已暂停(演示:仅暂停计时)' : '继续研究');
+});
+
+async function run() {
+  let srcN = 0, logI = 0;
+  for (let i = 0; i < PHASES.length; i++) {
+    const el = document.getElementById('ph-' + i);
+    el.classList.add('running');
+    document.getElementById('rc-status').textContent = 'RUNNING · 阶段 ' + (i + 1) + '/5';
+    document.getElementById('rc-bar').style.width = (i * 20 + 8) + '%';
+    const ticks = i === 1 ? 4 : 2;                    // 广度检索阶段信源入库多
+    for (let k = 0; k < ticks; k++) {
+      await sleep(750);
+      if (logI < LOGS.length) document.getElementById('rc-log').textContent = LOGS[logI++];
+      if ((i === 1 || i === 2) && srcN < FAVS.length) {
+        const f = document.createElement('i');
+        f.textContent = FAVS[srcN]; f.style.background = FAVC[srcN];
+        document.getElementById('favs').appendChild(f);
+        srcN++;
+        document.getElementById('src-cnt').textContent = srcN + ' 篇入库';
+      }
+    }
+    el.classList.remove('running'); el.classList.add('done');
+    document.getElementById('pn-' + i).textContent = PHASES[i].note;
+  }
+  document.getElementById('rc-bar').style.width = '100%';
+  document.getElementById('rc-status').textContent = 'DONE · 报告已交付';
+  document.getElementById('rc-log').textContent = '研究完成:9 篇来源、12 处引用、3 组冲突数据已标注区间';
+  deliver();
+}
+function sleep(ms) { return new Promise(r => { const w = () => paused ? setTimeout(w, 200) : r(); setTimeout(w, ms); }); }
+
+/* ---------------- 报告交付 ---------------- */
+function deliver() {
+  const thread = document.getElementById('thread');
+  const ai = CT.aiMsg('研究员');
+  ai.querySelector('.body').innerHTML += `
+    <div class="report">
+      <div class="rp-head"><b>📑 AI 客服技术方案调研报告</b><span class="pill ok">9 来源 · 12 引用</span></div>
+      <div class="rp-toc">
+        <a>一、结论与建议</a><a>二、问答型:检索质量是生死线</a><a>三、办事型:2026 年的增量与风险</a><a>四、成本与合规</a><a>附录:来源清单与冲突数据说明</a>
+      </div>
+      <div class="rp-body">
+        <h4>一、结论与建议(摘要)</h4>
+        <p>企业客服 AI 渗透率 61%、满意度仅 43%<span class="cite">1</span>,瓶颈在检索而非生成。建议先建 RAG 问答型(混合检索可提升命中率约 18pp<span class="cite">2</span>),三个月后基于真实问题分布决策 Agent 办事型投入(头部电商自动化率 37%<span class="cite">3</span>,须保留人工审批卡点)。合规上,金融/医疗新规已要求回答可追溯至知识来源<span class="cite">5</span>。</p>
+        <h4>四、成本与合规(节选)</h4>
+        <ul>
+          <li>RAG 问答型首年 ¥15~20 万;Agent 办事型 ¥45~60 万<span class="cite">6</span>;</li>
+          <li>自动化率数据存在口径冲突(37% vs 52%),分别对应"全自动闭环"与"含辅助人工",报告按区间呈现<span class="cite">3,7</span>。</li>
+        </ul>
+      </div>
+      <div class="rp-foot">
+        <button>展开完整报告</button><button>⭳ 导出 PDF</button><button>📎 引用清单</button><button>🔁 按新要求重研</button>
+      </div>
+    </div>`;
+  const prose = ai.querySelector('.prose');
+  thread.appendChild(ai);
+  document.getElementById('thread-wrap').scrollTop = 1e6;
+  CT.stream(prose, '<p>报告完成,用时 4 分 12 秒(演示加速)。三组冲突数据我都标了区间并注明口径 —— 附录里能看到每个数字出自哪篇来源的哪一段。</p>', { cps: 110 });
+}
+run();
+
+CT.demoReply = () => '<p>已记录方向调整。真实实现里,进行中的研究会把这条指令并入检索矩阵,后续阶段自动侧重新方向。</p>';
+</script>
+</body>
+</html>

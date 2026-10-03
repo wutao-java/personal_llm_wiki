@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>02 · 辉光深空 — 3D Bloom 知识图谱</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  #stage { cursor: grab; }
+  .node-tip {
+    font-family: var(--mono); font-size: 12px; color: #dbe6f5;
+    background: rgba(10,16,30,.85); border: 1px solid rgba(120,160,220,.25);
+    padding: 6px 10px; border-radius: 0;
+  }
+  .node-tip b { font-weight: 600; }
+  .node-tip small { color: #6b7c96; letter-spacing: .1em; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div class="scanline"></div>
+
+<div class="hud hud-top">
+  <div class="hud-title">
+    <div class="kicker">Exhibit 02 · 3d-force-graph · UnrealBloomPass</div>
+    <h1>辉光<em>深空</em></h1>
+    <div class="sub">ThreeJS 后处理辉光 + 沿边流动的数据粒子。左键旋转、滚轮缩放、右键平移;<b style="color:var(--ink)">点击任意节点</b>,摄影机会飞过去。</div>
+  </div>
+  <a class="back" href="index.html">◀ 星图馆</a>
+</div>
+
+<div class="legend" id="legend"></div>
+<div class="readout">
+  <div><b>120</b> NODES · <b id="stat-l">—</b> LINKS · BLOOM σ<b>1.3</b></div>
+  <div class="controls">
+    <button class="ctl on" id="btn-orbit">自动巡航 ⏸</button>
+    <button class="ctl" id="btn-particles">粒子流 ✦</button>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/3d-force-graph"></script>
+<script type="module">
+import { UnrealBloomPass } from 'https://esm.sh/three/examples/jsm/postprocessing/UnrealBloomPass.js';
+
+const DOMAINS = KG.DOMAINS;
+const data = {
+  nodes: KG.nodes.map(n => ({ ...n })),
+  links: KG.links.map(l => ({ ...l })),
+};
+document.getElementById('stat-l').textContent = data.links.length;
+
+const domainColor = n => DOMAINS[n.domain].color;
+
+const Graph = ForceGraph3D()(document.getElementById('stage'))
+  .backgroundColor('#04060d')
+  .graphData(data)
+  .nodeLabel(n => `<div class="node-tip"><b>${n.name}</b><br><small>${DOMAINS[n.domain].name} · DEGREE ${n.degree}</small></div>`)
+  .nodeColor(domainColor)
+  .nodeVal(n => n.hub ? 14 : 1.5 + n.degree * 0.6)
+  .nodeResolution(16)
+  .nodeOpacity(0.92)
+  .linkColor(l => domainColor(typeof l.source === 'object' ? l.source : KG.byId[l.source]))
+  .linkOpacity(0.28)
+  .linkWidth(l => l.weight >= 2 ? 1.2 : 0.4)
+  .linkDirectionalParticles(l => l.weight >= 1.5 ? 3 : 1)
+  .linkDirectionalParticleWidth(1.6)
+  .linkDirectionalParticleSpeed(0.006)
+  .linkDirectionalParticleColor(l => domainColor(typeof l.source === 'object' ? l.source : KG.byId[l.source]))
+  .onNodeClick(node => {
+    stopOrbit();
+    const dist = 90;
+    const ratio = 1 + dist / Math.hypot(node.x, node.y, node.z);
+    Graph.cameraPosition(
+      { x: node.x * ratio, y: node.y * ratio, z: node.z * ratio },
+      node, 1600
+    );
+  });
+
+// —— 辉光后处理:整个场景进入 bloom 管线 ——
+const bloomPass = new UnrealBloomPass();
+bloomPass.strength = 1.3;
+bloomPass.radius = 0.6;
+bloomPass.threshold = 0.15;
+Graph.postProcessingComposer().addPass(bloomPass);
+
+// —— 自动巡航:手动环绕相机(官方 camera-auto-orbit 方案)——
+let orbiting = true, angle = 0;
+const ORBIT_R = 420;
+const orbitTimer = setInterval(() => {
+  if (!orbiting) return;
+  Graph.cameraPosition({
+    x: ORBIT_R * Math.sin(angle),
+    y: 120 * Math.sin(angle * 0.35),
+    z: ORBIT_R * Math.cos(angle),
+  });
+  angle += Math.PI / 700;
+}, 25);
+
+const btnOrbit = document.getElementById('btn-orbit');
+function stopOrbit() {
+  if (!orbiting) return;
+  orbiting = false;
+  btnOrbit.textContent = '手动驾驶 ▶';
+  btnOrbit.classList.remove('on');
+}
+btnOrbit.onclick = () => {
+  orbiting = !orbiting;
+  btnOrbit.textContent = orbiting ? '自动巡航 ⏸' : '手动驾驶 ▶';
+  btnOrbit.classList.toggle('on', orbiting);
+};
+// 用户一上手就交还控制权
+document.getElementById('stage').addEventListener('pointerdown', stopOrbit);
+document.getElementById('stage').addEventListener('wheel', stopOrbit, { passive: true });
+
+// —— 粒子流开关 ——
+let particles = true;
+const btnP = document.getElementById('btn-particles');
+btnP.classList.add('on');
+btnP.onclick = () => {
+  particles = !particles;
+  Graph.linkDirectionalParticles(particles ? (l => l.weight >= 1.5 ? 3 : 1) : 0);
+  btnP.classList.toggle('on', particles);
+};
+
+// —— 图例 ——
+const legend = document.getElementById('legend');
+DOMAINS.forEach(d => {
+  const el = document.createElement('span');
+  el.className = 'chip'; el.style.setProperty('--c', d.color);
+  el.innerHTML = `<i></i>${d.name} <span style="opacity:.5">${d.en}</span>`;
+  legend.appendChild(el);
+});
+
+// 收紧一点力,让簇更抱团
+Graph.d3Force('charge').strength(-42);
+</script>
+</body>
+</html>

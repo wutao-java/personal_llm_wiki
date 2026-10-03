@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>02 RAG 溯源 · Chat Templates</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+/* 引用角标 */
+.cite {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 17px; height: 17px; padding: 0 4px; margin: 0 2px; vertical-align: 2px;
+  font-family: var(--mono); font-size: 10px; font-weight: 500; color: var(--accent);
+  background: var(--accent-soft); border: 1px solid var(--accent-line); border-radius: 5px;
+  cursor: pointer; transition: background .15s, transform .1s;
+}
+.cite:hover { background: var(--accent-line); transform: translateY(-1px); }
+.cite.lit { background: var(--accent); color: var(--accent-ink); }
+
+/* 来源卡 */
+.src-card {
+  border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface);
+  padding: 11px 12px; cursor: pointer; transition: border-color .15s, box-shadow .15s;
+}
+.src-card:hover { border-color: var(--border-hi); }
+.src-card.lit { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.src-top { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
+.src-no {
+  font-family: var(--mono); font-size: 10px; font-weight: 500; color: var(--accent);
+  background: var(--accent-soft); border-radius: 5px; min-width: 17px; height: 17px;
+  display: grid; place-items: center; flex: none;
+}
+.src-fav { width: 14px; height: 14px; border-radius: 4px; flex: none; }
+.src-domain { font-family: var(--mono); font-size: 10px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.src-conf { margin-left: auto; flex: none; }
+.src-title { font-size: 12.5px; font-weight: 600; line-height: 1.5; margin-bottom: 4px; }
+.src-snip { font-size: 11.5px; line-height: 1.65; color: var(--dim); }
+.src-quote {
+  display: none; margin-top: 9px; padding: 9px 11px; font-size: 11.5px; line-height: 1.7; color: var(--dim);
+  background: var(--surface-2); border-left: 2px solid var(--accent); border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+.src-card.open .src-quote { display: block; }
+.src-quote mark { background: var(--accent-soft); color: var(--ink); border-bottom: 1px solid var(--accent); padding: 0 1px; }
+.src-quote .q-label { font-family: var(--mono); font-size: 9px; letter-spacing: .08em; color: var(--accent); display: block; margin-bottom: 5px; }
+
+/* 未采用来源(折叠区) */
+.sp-more { border-top: 1px dashed var(--border); padding-top: 10px; margin-top: 4px; }
+.sp-more > button { width: 100%; text-align: left; font-size: 11.5px; color: var(--faint); background: none; border: none; padding: 4px 2px; }
+.sp-more > button:hover { color: var(--ink); }
+.sp-more .rest { display: none; margin-top: 8px; display: none; flex-direction: column; gap: 8px; }
+.sp-more.open .rest { display: flex; }
+.sp-more .rest .src-card { opacity: .66; }
+
+/* 答案里的置信度提示条 */
+.conf-note {
+  display: flex; align-items: center; gap: 8px; margin-top: 12px;
+  font-size: 11.5px; color: var(--dim);
+  background: var(--warn-soft); border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent);
+  border-radius: var(--r-md); padding: 8px 12px;
+}
+</style>
+</head>
+<body data-ai-name="知识库助手">
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="sb-head"><span class="logo">💬</span><a href="index.html">Chat Templates</a><span class="tpl">TPL-02</span></div>
+    <button class="new-chat"><b>＋</b> 新建对话</button>
+    <nav class="convs">
+      <div class="group">今天</div>
+      <button class="item on">AI 客服技术方案调研</button>
+      <button class="item">售后政策里运费谁承担</button>
+      <div class="group">昨天</div>
+      <button class="item">新员工试用期考核标准</button>
+      <button class="item">数据备份策略文档在哪</button>
+      <div class="group">前 7 天</div>
+      <button class="item">报销流程和额度上限</button>
+      <button class="item">产品 SLA 承诺是多少</button>
+    </nav>
+    <div class="sb-foot"><span class="ava">木</span>木鱼<span class="plan">PRO</span></div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="crumb"><a href="index.html">模板库</a> / <b>02 RAG 溯源</b></div>
+      <span class="model-pill"><i></i>知识库 · 已连接 3 个空间 ▾</span>
+      <div class="tb-spacer"></div>
+      <button class="tb-btn" id="theme-toggle" data-silent="1"></button>
+      <button class="tb-btn">分享</button>
+    </header>
+
+    <div class="thread-wrap">
+      <div class="thread" id="thread">
+
+        <div class="msg user">
+          <div class="ava">你</div>
+          <div class="body">
+            <div class="who">你 <span class="t">14:02</span></div>
+            <div class="prose">帮我调研一下,2026 年做 AI 客服该选什么技术方案?重点是别瞎编,每个结论我都要能查到出处。</div>
+          </div>
+        </div>
+
+        <div class="msg ai">
+          <div class="ava">AI</div>
+          <div class="body">
+            <div class="who">知识库助手 <span class="t">14:02 · 检索 12 篇,采用 5 篇</span></div>
+            <div class="prose">
+              <p>基于知识库检索结果,给你三个有出处的结论:</p>
+              <p><strong>1. 问答型客服已是红海,竞争点在检索质量。</strong>2025 年企业客服 AI 渗透率达 61%,但用户满意度只有 43%,主要抱怨是"答非所问"<span class="cite" data-src="1">1</span>。混合检索(BM25 + 向量)相比纯向量检索,在客服 FAQ 场景的命中率高 18~24 个百分点<span class="cite" data-src="2">2</span>。</p>
+              <p><strong>2. Agent 办事型是 2026 年的增量。</strong>头部电商已把退款、改地址类工单交给 Agent 处理,自动化率 37%,但都配备了人工审批卡点<span class="cite" data-src="3">3</span>。框架层面 LangGraph 的状态机编排在生产环境的采用率排第一<span class="cite" data-src="4">4</span>。</p>
+              <p><strong>3. 溯源能力从加分项变成合规要求。</strong>金融、医疗行业的 AI 客服新规要求"生成内容可追溯至知识来源"<span class="cite" data-src="5">5</span>,这正是本模板右侧来源面板的产品意义。</p>
+              <div class="conf-note">⚠️ 关于"2026 年模型调用价格趋势",知识库中<strong style="margin:0 3px">没有足够依据</strong>,已略去 —— 查不到的就说查不到,不硬答。</div>
+            </div>
+            <div class="msg-actions">
+              <button>📋 复制</button><button>🔄 重新生成</button><button>📎 导出带引用版本</button><button>👍</button><button>👎</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="composer">
+      <div class="inner">
+        <div class="c-box">
+          <textarea rows="1" placeholder="向知识库提问…(演示环境)"></textarea>
+          <button class="send" data-silent="1">↑</button>
+        </div>
+        <div class="c-hint">回答仅基于已连接的知识空间 · 点击 <b>引用角标</b> 或右侧来源卡可定位原文</div>
+      </div>
+    </div>
+  </main>
+
+  <aside class="side-panel">
+    <div class="sp-head">来源 <span class="cnt">5 篇采用</span><button class="sp-act">全部折叠</button></div>
+    <div class="sp-body" id="src-list">
+
+      <div class="src-card" data-no="1">
+        <div class="src-top"><span class="src-no">1</span><span class="src-fav" style="background:#e0894f"></span><span class="src-domain">iresearch-report.cn</span><span class="src-conf pill ok">高相关</span></div>
+        <div class="src-title">《2025 中国智能客服行业研究报告》</div>
+        <div class="src-snip">企业级智能客服渗透率、满意度与投诉归因的年度调查数据。</div>
+        <div class="src-quote"><span class="q-label">命中段落 · P.34</span>2025 年企业客服场景 AI 渗透率达 <mark>61%</mark>,但终端用户满意度仅 <mark>43%</mark>,负面反馈中 68% 集中于"回答与问题不相关",反映检索环节而非生成环节是当前主要瓶颈。</div>
+      </div>
+
+      <div class="src-card" data-no="2">
+        <div class="src-top"><span class="src-no">2</span><span class="src-fav" style="background:#5b8def"></span><span class="src-domain">tech.meixi.com</span><span class="src-conf pill ok">高相关</span></div>
+        <div class="src-title">美汐科技:客服知识库检索的 AB 实验复盘</div>
+        <div class="src-snip">在 40 万条真实客服问询上对比纯向量与混合检索的效果。</div>
+        <div class="src-quote"><span class="q-label">命中段落 · 第 3 节</span>引入 BM25 与向量双路召回 + RRF 融合后,FAQ 场景 Top-3 命中率由 71.2% 提升至 <mark>89.5%,提高 18.3 个百分点</mark>;在含型号、单据号的查询上提升尤为显著(+24.1pp)。</div>
+      </div>
+
+      <div class="src-card" data-no="3">
+        <div class="src-top"><span class="src-no">3</span><span class="src-fav" style="background:#c85f8d"></span><span class="src-domain">infoq.cn</span><span class="src-conf pill ok">高相关</span></div>
+        <div class="src-title">某头部电商 Agent 工单系统落地一年记</div>
+        <div class="src-snip">退款、改地址等 12 类工单接入 Agent 的自动化率与事故复盘。</div>
+        <div class="src-quote"><span class="q-label">命中段落 · 第 5 节</span>上线 12 个月后,12 类标准工单整体自动化率 <mark>37%</mark>;所有资金相关操作均保留<mark>人工审批卡点</mark>,期间 3 起误操作均在审批环节被拦截。</div>
+      </div>
+
+      <div class="src-card" data-no="4">
+        <div class="src-top"><span class="src-no">4</span><span class="src-fav" style="background:#4fae7e"></span><span class="src-domain">devsurvey.io</span><span class="src-conf pill warn">中相关</span></div>
+        <div class="src-title">2026 Agent 框架生产环境采用度调查</div>
+        <div class="src-snip">1,847 名后端工程师参与,覆盖框架选型与弃坑原因。</div>
+        <div class="src-quote"><span class="q-label">命中段落 · 图 7</span>在"已在生产环境使用"的受访者中,<mark>LangGraph 占 34%,排名第一</mark>;主因是状态机编排对失败重试与人工介入的原生支持。注意:样本偏英文技术社区。</div>
+      </div>
+
+      <div class="src-card" data-no="5">
+        <div class="src-top"><span class="src-no">5</span><span class="src-fav" style="background:#8d78d4"></span><span class="src-domain">gov-policy.cn</span><span class="src-conf pill warn">中相关</span></div>
+        <div class="src-title">《金融领域智能客服服务规范(征求意见稿)》</div>
+        <div class="src-snip">对生成式 AI 客服的可追溯性、免责声明与人工兜底的要求。</div>
+        <div class="src-quote"><span class="q-label">命中段落 · 第 12 条</span>采用生成式人工智能提供客户服务的,应当确保生成内容<mark>可追溯至具体知识来源</mark>,并在无法确认来源时明确告知用户或转由人工处理。</div>
+      </div>
+
+      <div class="sp-more" id="sp-more">
+        <button id="more-btn">▸ 检索到但未采用的 7 篇(相关度不足)</button>
+        <div class="rest">
+          <div class="src-card"><div class="src-top"><span class="src-fav" style="background:#999"></span><span class="src-domain">blog.example.com</span><span class="src-conf pill dim">低相关</span></div><div class="src-title">聊天机器人简史(2010-2020)</div></div>
+          <div class="src-card"><div class="src-top"><span class="src-fav" style="background:#999"></span><span class="src-domain">news.example.cn</span><span class="src-conf pill dim">低相关</span></div><div class="src-title">某公司发布新一代智能音箱</div></div>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+</div>
+
+<script src="shared.js"></script>
+<script>
+CT.init();
+
+/* 引用角标 ⇄ 来源卡联动:点角标 → 面板定位 + 高亮 + 展开原文 */
+function focusSource(no) {
+  document.querySelectorAll('.src-card').forEach(c => c.classList.remove('lit'));
+  document.querySelectorAll('.cite').forEach(c => c.classList.toggle('lit', c.dataset.src === String(no)));
+  const card = document.querySelector('.src-card[data-no="' + no + '"]');
+  if (!card) return;
+  card.classList.add('lit', 'open');
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  setTimeout(() => card.classList.remove('lit'), 2200);
+  setTimeout(() => document.querySelectorAll('.cite').forEach(c => c.classList.remove('lit')), 2200);
+}
+document.querySelectorAll('.cite').forEach(c => c.addEventListener('click', () => focusSource(c.dataset.src)));
+document.querySelectorAll('.src-card[data-no]').forEach(card => {
+  card.addEventListener('click', () => card.classList.toggle('open'));
+});
+document.getElementById('more-btn').addEventListener('click', () =>
+  document.getElementById('sp-more').classList.toggle('open'));
+document.querySelector('.sp-act').addEventListener('click', () =>
+  document.querySelectorAll('.src-card.open').forEach(c => c.classList.remove('open')));
+
+/* composer 的演示回复 */
+CT.demoReply = () => '<p>演示环境:真实实现里,这条回复会带着新的引用角标返回,右侧来源面板同步刷新为本轮检索命中的文档。</p>';
+</script>
+</body>
+</html>

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>05 · 星阵 — 可重排邻接矩阵</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  #stage { cursor: cell; }
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+<div class="scanline"></div>
+
+<div class="hud hud-top">
+  <div class="hud-title">
+    <div class="kicker">Exhibit 05 · Adjacency Matrix · 稠密图的正确打开方式</div>
+    <h1>星<em>阵</em></h1>
+    <div class="sub">每个亮格是一条边:行 × 列 = 关系。连线图在稠密时会成一团乱麻,矩阵永远清晰 —— <b style="color:var(--ink)">切换排序</b>,看 700 个亮点集体迁徙、结构瞬间显形。</div>
+  </div>
+  <a class="back" href="index.html">◀ 星图馆</a>
+</div>
+
+<div class="legend" id="legend"></div>
+<div class="readout">
+  <div><b>120×120</b> MATRIX · <b id="stat-c">—</b> LIT CELLS</div>
+  <div class="controls">
+    <button class="ctl on" data-ord="domain">按领域 ▦</button>
+    <button class="ctl" data-ord="degree">按度数 ↓</button>
+    <button class="ctl" data-ord="name">按名称 拼</button>
+  </div>
+</div>
+<div class="tip" id="tip"><div class="t-name"></div><div class="t-meta"></div></div>
+
+<script src="data.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script>
+const DOMAINS = KG.DOMAINS, nodes = KG.nodes, N = nodes.length;
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+let dpr = 1, S = 0, cell = 0, ox = 0, oy = 0;   // 矩阵边长/格宽/原点
+
+/* ---------- 亮格数据(对称 + 对角线) ---------- */
+const cells = [];
+KG.links.forEach(l => {
+  const a = KG.byId[l.source].index, b = KG.byId[l.target].index;
+  cells.push({ r: a, c: b, w: l.weight }, { r: b, c: a, w: l.weight });
+});
+for (let i = 0; i < N; i++) cells.push({ r: i, c: i, w: 0.5, diag: true });
+document.getElementById('stat-c').textContent = cells.length;
+
+/* ---------- 三种排序的置换 ---------- */
+const orders = {
+  domain: d3.range(N),
+  degree: d3.range(N).sort((a, b) => nodes[b].degree - nodes[a].degree || a - b),
+  name:   d3.range(N).sort((a, b) => nodes[a].name.localeCompare(nodes[b].name, 'zh-Hans-CN')),
+};
+const posOf = {};   // ord → 数组: 节点 index → 行位
+for (const k in orders) {
+  posOf[k] = new Array(N);
+  orders[k].forEach((nodeIdx, rank) => posOf[k][nodeIdx] = rank);
+}
+
+let cur = posOf.domain.slice();       // 当前每个节点的(动画中)位置
+let from = cur.slice(), to = cur.slice();
+let animT = 1, animStart = 0;
+const DUR = 1100;
+
+function setOrder(k) {
+  from = cur.slice(); to = posOf[k];
+  animStart = performance.now(); animT = 0;
+  d3.timer(function (t) {
+    animT = Math.min(1, (performance.now() - animStart) / DUR);
+    const e = d3.easeCubicInOut(animT);
+    for (let i = 0; i < N; i++) cur[i] = from[i] + (to[i] - from[i]) * e;
+    draw();
+    if (animT >= 1) return true;   // 停表
+  });
+}
+
+/* ---------- 渲染 ---------- */
+function resize() {
+  dpr = devicePixelRatio || 1;
+  canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr;
+  canvas.style.width = innerWidth + 'px'; canvas.style.height = innerHeight + 'px';
+  S = Math.min(innerWidth, innerHeight) - 220;
+  cell = S / N;
+  ox = (innerWidth - S) / 2; oy = (innerHeight - S) / 2 + 26;
+  draw();
+}
+
+let hover = null;   // {r, c} 以"位置"为单位
+function draw() {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#04060d'; ctx.fillRect(0, 0, innerWidth, innerHeight);
+
+  // 领域色带(左 + 上)
+  for (let i = 0; i < N; i++) {
+    const p = cur[i], col = DOMAINS[nodes[i].domain].color;
+    ctx.fillStyle = col; ctx.globalAlpha = 0.9;
+    ctx.fillRect(ox - 10, oy + p * cell, 4, cell + 0.5);
+    ctx.fillRect(ox + p * cell, oy - 10, cell + 0.5, 4);
+  }
+  ctx.globalAlpha = 1;
+
+  // 细网格底
+  ctx.strokeStyle = 'rgba(120,160,220,0.05)'; ctx.lineWidth = 1;
+  ctx.strokeRect(ox, oy, S, S);
+
+  // 悬停十字
+  if (hover) {
+    ctx.fillStyle = 'rgba(34,211,238,0.06)';
+    ctx.fillRect(ox, oy + hover.r * cell, S, cell);
+    ctx.fillRect(ox + hover.c * cell, oy, cell, S);
+  }
+
+  // 亮格
+  const pad = Math.max(0.4, cell * 0.14);
+  cells.forEach(cl => {
+    const x = ox + cur[cl.c] * cell, y = oy + cur[cl.r] * cell;
+    const col = DOMAINS[nodes[cl.r].domain].color;
+    ctx.fillStyle = col;
+    ctx.globalAlpha = cl.diag ? 0.22 : (cl.w >= 2 ? 1 : 0.62);
+    if (!cl.diag && cl.w >= 2) { ctx.shadowColor = col; ctx.shadowBlur = 5; }
+    ctx.fillRect(x + pad / 2, y + pad / 2, cell - pad, cell - pad);
+    ctx.shadowBlur = 0;
+  });
+  ctx.globalAlpha = 1;
+}
+
+/* ---------- 悬停:反查该行/列的节点 ---------- */
+const tip = document.getElementById('tip');
+canvas.addEventListener('mousemove', e => {
+  const c = Math.floor((e.clientX - ox) / cell), r = Math.floor((e.clientY - oy) / cell);
+  if (r < 0 || c < 0 || r >= N || c >= N) { hover = null; tip.classList.remove('show'); draw(); return; }
+  hover = { r, c };
+  // cur 是 节点→位置;反向找最近的节点
+  let ni = 0, nj = 0;
+  for (let i = 0; i < N; i++) { if (Math.round(cur[i]) === r) ni = i; if (Math.round(cur[i]) === c) nj = i; }
+  const A = nodes[ni], B = nodes[nj];
+  const linked = cells.some(cl => !cl.diag && cl.r === ni && cl.c === nj);
+  tip.classList.add('show');
+  tip.style.left = (e.clientX + 16) + 'px'; tip.style.top = (e.clientY + 12) + 'px';
+  tip.style.setProperty('--tip-c', linked ? DOMAINS[A.domain].color : '#3a4a62');
+  tip.querySelector('.t-name').textContent = `${A.name} × ${B.name}`;
+  tip.querySelector('.t-meta').textContent = ni === nj ? '对角线(自身)' : (linked ? '● 存在关联' : '○ 无直接关联');
+  draw();
+});
+canvas.addEventListener('mouseleave', () => { hover = null; tip.classList.remove('show'); draw(); });
+
+/* ---------- 控件与图例 ---------- */
+document.querySelectorAll('[data-ord]').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('[data-ord]').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    setOrder(btn.dataset.ord);
+  };
+});
+const legend = document.getElementById('legend');
+DOMAINS.forEach(d => {
+  const el = document.createElement('span');
+  el.className = 'chip'; el.style.setProperty('--c', d.color);
+  el.innerHTML = `<i></i>${d.name}`;
+  legend.appendChild(el);
+});
+
+resize();
+addEventListener('resize', resize);
+
+// 入场:从名称序滑入领域序,展示"结构显形"的瞬间
+cur = posOf.name.slice();
+setTimeout(() => setOrder('domain'), 600);
+</script>
+</body>
+</html>

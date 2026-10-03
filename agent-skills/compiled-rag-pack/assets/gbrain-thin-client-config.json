@@ -1,0 +1,8 @@
+{
+  "_comment": "GBrain thin-client 配置模板。放在 $GBRAIN_HOME/.gbrain/config.json（GBRAIN_HOME 会自动附加 .gbrain/ 子目录）。CLI 检测到 remote_mcp 字段就跳过本地 PGLite 初始化、直接路由到远程 MCP 服务——用于 serve 已独占 PGLite 写锁时，管理员仍能用 CLI 验证隔离。teammate 真实使用路径走 MCP HTTP API（thin-client CLI 文本输出不支持 --json，带 source_id 的 JSON 要走 MCP HTTP）。",
+  "remote_mcp": {
+    "issuer_url": "http://localhost:3131",
+    "mcp_url": "http://localhost:3131/mcp",
+    "oauth_client_id": "gbrain_cl_替换成注册返回的client_id"
+  }
+}

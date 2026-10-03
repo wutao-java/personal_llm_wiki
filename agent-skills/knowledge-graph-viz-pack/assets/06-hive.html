@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>06 · 结构之弦 — Hive ⇄ Arc 变形</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  svg { position: fixed; inset: 0; width: 100vw; height: 100vh; }
+  .lk { fill: none; stroke-width: 1; opacity: .3; transition: opacity .25s, stroke-width .25s; }
+  svg.focus .lk { opacity: .04; }
+  svg.focus .lk.on { opacity: .95; stroke-width: 2; }
+  .nd { cursor: pointer; transition: r .2s; filter: drop-shadow(0 0 4px var(--c)); }
+  svg.focus .nd { opacity: .18; }
+  svg.focus .nd.on { opacity: 1; }
+  .axis-line { stroke: rgba(120,160,220,.22); stroke-width: 1; stroke-dasharray: 2 5; }
+  .axis-label {
+    font-family: var(--display); font-weight: 800; font-size: 14px;
+    fill: #dbe6f5; letter-spacing: .08em; text-anchor: middle;
+  }
+  .axis-sub { font-family: var(--mono); font-size: 9px; fill: #6b7c96; text-anchor: middle; letter-spacing: .2em; }
+  .nd-label {
+    font-family: var(--mono); font-size: 10px; fill: #dbe6f5;
+    text-anchor: middle; pointer-events: none; opacity: 0; transition: opacity .15s;
+  }
+  .nd-label.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+<svg id="stage"></svg>
+
+<div class="hud hud-top">
+  <div class="hud-title">
+    <div class="kicker">Exhibit 06 · Hive Plot ⇄ Arc Diagram · 确定性布局</div>
+    <h1>结构之<em>弦</em></h1>
+    <div class="sub">力导向每次都长得不一样,Hive/Arc 是<b style="color:var(--ink)">确定性</b>布局:节点按"角色轴 × 度数"精确落位,适合严肃比较。点右下按钮,看整张图在两种几何之间变形。</div>
+  </div>
+  <a class="back" href="index.html">◀ 星图馆</a>
+</div>
+
+<div class="legend" id="legend"></div>
+<div class="readout">
+  <div><b>120</b> NODES · <b id="stat-e">—</b> CHORDS · DETERMINISTIC</div>
+  <div class="controls">
+    <button class="ctl on" id="btn-hive">HIVE ✳</button>
+    <button class="ctl" id="btn-arc">ARC ◠</button>
+  </div>
+</div>
+<div class="tip" id="tip"><div class="t-name"></div><div class="t-meta"></div></div>
+
+<script src="data.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script>
+const DOMAINS = KG.DOMAINS, nodes = KG.nodes;
+const svg = d3.select('#stage');
+const Wv = innerWidth, Hv = innerHeight;
+svg.attr('viewBox', [-Wv / 2, -Hv / 2, Wv, Hv]);
+const g = svg.append('g');
+
+/* ---------- 四条角色轴 ---------- */
+const AXES = [
+  { name: '基础理论', sub: 'THEORY',    domains: [3],       angle: -Math.PI / 2 },
+  { name: '算力与数据', sub: 'RESOURCES', domains: [4, 5],   angle: 0 },
+  { name: '模型技术', sub: 'MODELS',    domains: [0, 2],     angle: Math.PI / 2 },
+  { name: '应用与治理', sub: 'PRACTICE', domains: [1, 7, 6], angle: Math.PI },
+];
+const axisOf = {};
+AXES.forEach((ax, ai) => ax.domains.forEach(d => axisOf[d] = ai));
+
+const R0 = 100, R1 = Math.min(Wv, Hv) / 2 - 150;
+
+/* hive 位置:轴向按度数排位 */
+AXES.forEach((ax, ai) => {
+  const mine = nodes.filter(n => axisOf[n.domain] === ai)
+    .sort((a, b) => a.degree - b.degree || a.index - b.index);
+  mine.forEach((n, i) => {
+    const r = R0 + (i / (mine.length - 1)) * (R1 - R0);
+    n.hx = Math.cos(ax.angle) * r;
+    n.hy = Math.sin(ax.angle) * r;
+    n.axis = ai;
+  });
+});
+
+/* arc 位置:一条水平弦,按 轴 → 领域 → 度数 排 */
+const lineY = Hv * 0.22;
+const sorted = nodes.slice().sort((a, b) =>
+  a.axis - b.axis || a.domain - b.domain || b.degree - a.degree);
+const spanX = Wv * 0.41;
+sorted.forEach((n, i) => {
+  n.ax_ = -spanX + (i / (sorted.length - 1)) * spanX * 2;
+  n.ay_ = lineY;
+});
+
+/* ---------- 两种模式下的弦(统一为三次贝塞尔,便于插值) ---------- */
+function hivePath(a, b) {
+  if (a.axis === b.axis) {                       // 同轴:垂直于轴向两侧鼓出
+    const ang = AXES[a.axis].angle;
+    const px = -Math.sin(ang), py = Math.cos(ang);
+    const side = (a.index + b.index) % 2 ? 1 : -1;
+    const off = (Math.hypot(a.hx - b.hx, a.hy - b.hy) * 0.5 + 26) * side;
+    return `M${a.hx},${a.hy}C${a.hx + px * off},${a.hy + py * off},${b.hx + px * off},${b.hy + py * off},${b.hx},${b.hy}`;
+  }
+  return `M${a.hx},${a.hy}C${a.hx * 0.22},${a.hy * 0.22},${b.hx * 0.22},${b.hy * 0.22},${b.hx},${b.hy}`;
+}
+function arcPath(a, b) {
+  const x0 = Math.min(a.ax_, b.ax_), x1 = Math.max(a.ax_, b.ax_);
+  const h = Math.min((x1 - x0) * 0.75, Hv * 0.62);
+  return `M${x0},${lineY}C${x0 + (x1 - x0) / 4},${lineY - h},${x1 - (x1 - x0) / 4},${lineY - h},${x1},${lineY}`;
+}
+
+const links = KG.links.map(l => ({ a: KG.byId[l.source], b: KG.byId[l.target], w: l.weight }));
+document.getElementById('stat-e').textContent = links.length;
+
+/* ---------- 绘制 ---------- */
+const axisG = g.append('g');
+AXES.forEach(ax => {
+  axisG.append('line').attr('class', 'axis-line')
+    .attr('x1', Math.cos(ax.angle) * (R0 - 18)).attr('y1', Math.sin(ax.angle) * (R0 - 18))
+    .attr('x2', Math.cos(ax.angle) * (R1 + 24)).attr('y2', Math.sin(ax.angle) * (R1 + 24));
+  axisG.append('text').attr('class', 'axis-label')
+    .attr('x', Math.cos(ax.angle) * (R1 + 66)).attr('y', Math.sin(ax.angle) * (R1 + 66) + 5)
+    .text(ax.name);
+  axisG.append('text').attr('class', 'axis-sub')
+    .attr('x', Math.cos(ax.angle) * (R1 + 66)).attr('y', Math.sin(ax.angle) * (R1 + 66) + 22)
+    .text(ax.sub);
+});
+
+const linkSel = g.append('g').selectAll('path')
+  .data(links).join('path')
+  .attr('class', 'lk')
+  .attr('stroke', d => DOMAINS[d.a.domain].color)
+  .attr('d', d => hivePath(d.a, d.b));
+
+const nodeSel = g.append('g').selectAll('circle')
+  .data(nodes).join('circle')
+  .attr('class', 'nd')
+  .attr('r', d => d.hub ? 7 : 2.2 + d.degree * 0.35)
+  .attr('fill', d => DOMAINS[d.domain].color)
+  .style('--c', d => DOMAINS[d.domain].color)
+  .attr('cx', d => d.hx).attr('cy', d => d.hy);
+
+const labelSel = g.append('g').selectAll('text')
+  .data(nodes).join('text')
+  .attr('class', 'nd-label')
+  .text(d => d.name);
+
+/* ---------- 模式切换(整场变形) ---------- */
+let mode = 'hive';
+function morph(to) {
+  if (mode === to) return;
+  mode = to;
+  document.getElementById('btn-hive').classList.toggle('on', to === 'hive');
+  document.getElementById('btn-arc').classList.toggle('on', to === 'arc');
+  axisG.transition().duration(700).style('opacity', to === 'hive' ? 1 : 0);
+  nodeSel.transition().duration(1300).ease(d3.easeCubicInOut)
+    .delay((d, i) => i * 3)
+    .attr('cx', d => to === 'hive' ? d.hx : d.ax_)
+    .attr('cy', d => to === 'hive' ? d.hy : d.ay_);
+  linkSel.transition().duration(1300).ease(d3.easeCubicInOut)
+    .delay((d, i) => i * 2)
+    .attr('d', d => to === 'hive' ? hivePath(d.a, d.b) : arcPath(d.a, d.b));
+}
+document.getElementById('btn-hive').onclick = () => morph('hive');
+document.getElementById('btn-arc').onclick = () => morph('arc');
+
+/* ---------- 悬停点亮 ---------- */
+const tip = document.getElementById('tip');
+nodeSel
+  .on('mouseenter', function (e, d) {
+    svg.classed('focus', true);
+    const hot = new Set([d]);
+    linkSel.classed('on', l => {
+      const on = l.a === d || l.b === d;
+      if (on) { hot.add(l.a); hot.add(l.b); }
+      return on;
+    }).filter('.on').raise();
+    nodeSel.classed('on', n => hot.has(n));
+    labelSel.classed('show', n => hot.has(n))
+      .attr('x', n => mode === 'hive' ? n.hx : n.ax_)
+      .attr('y', n => (mode === 'hive' ? n.hy : n.ay_) + (mode === 'arc' ? 18 : -12));
+    tip.classList.add('show');
+    tip.style.left = (e.clientX + 16) + 'px'; tip.style.top = (e.clientY + 12) + 'px';
+    tip.style.setProperty('--tip-c', DOMAINS[d.domain].color);
+    tip.querySelector('.t-name').textContent = d.name;
+    tip.querySelector('.t-meta').textContent = `${DOMAINS[d.domain].name} · DEGREE ${d.degree} · ${AXES[d.axis].name}轴`;
+  })
+  .on('mouseleave', () => {
+    svg.classed('focus', false);
+    linkSel.classed('on', false); nodeSel.classed('on', false); labelSel.classed('show', false);
+    tip.classList.remove('show');
+  });
+
+/* ---------- 图例 ---------- */
+const legend = document.getElementById('legend');
+DOMAINS.forEach(d => {
+  const el = document.createElement('span');
+  el.className = 'chip'; el.style.setProperty('--c', d.color);
+  el.innerHTML = `<i></i>${d.name}`;
+  legend.appendChild(el);
+});
+
+/* 入场:弦逐根亮起 */
+linkSel.style('opacity', 0).transition().delay((d, i) => 150 + i * 5).duration(600)
+  .style('opacity', 0.3)
+  .on('end', function () { d3.select(this).style('opacity', null); });
+</script>
+</body>
+</html>

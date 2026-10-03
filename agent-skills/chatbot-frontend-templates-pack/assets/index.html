@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>对话产品模板 · 八形态布局基线画廊</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f7f7f8;
+  --surface: #ffffff;
+  --surface-2: #f1f1f3;
+  --border: #e4e4e8;
+  --border-hi: #d0d0d6;
+  --ink: #18181b;
+  --dim: #6e6e78;
+  --faint: #a5a5af;
+  --accent: #0d9488;
+  --accent-soft: rgba(13, 148, 136, .10);
+  --accent-line: rgba(13, 148, 136, .38);
+  --shadow: 0 1px 2px rgba(20, 22, 28, .05), 0 8px 28px -12px rgba(20, 22, 28, .12);
+  --shadow-hover: 0 2px 4px rgba(20, 22, 28, .06), 0 16px 40px -14px rgba(20, 22, 28, .18);
+  --sans: 'Instrument Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --mono: 'IBM Plex Mono', monospace;
+  --r-lg: 14px;
+  --r-md: 9px;
+  --r-sm: 5px;
+}
+[data-theme="dark"] {
+  --bg: #131316;
+  --surface: #1b1b1f;
+  --surface-2: #232328;
+  --border: #2a2a31;
+  --border-hi: #3a3a42;
+  --ink: #ececf1;
+  --dim: #9d9da8;
+  --faint: #5e5e68;
+  --accent: #2dd4bf;
+  --accent-soft: rgba(45, 212, 191, .10);
+  --accent-line: rgba(45, 212, 191, .40);
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 28px -12px rgba(0, 0, 0, .5);
+  --shadow-hover: 0 2px 4px rgba(0, 0, 0, .35), 0 16px 40px -14px rgba(0, 0, 0, .6);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { color-scheme: light; }
+html[data-theme="dark"] { color-scheme: dark; }
+body {
+  font-family: var(--sans); background: var(--bg); color: var(--ink);
+  min-height: 100vh; -webkit-font-smoothing: antialiased;
+  transition: background .25s, color .25s;
+}
+.wrap { max-width: 1360px; margin: 0 auto; padding: 40px 36px 72px; }
+
+/* ============ 顶栏 ============ */
+.topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 44px; }
+.brand { display: flex; align-items: center; gap: 11px; font-weight: 600; font-size: 15px; letter-spacing: -.01em; }
+.brand .logo {
+  width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center;
+  background: var(--accent); color: #fff; font-size: 14px;
+}
+.brand .tagline { color: var(--faint); font-weight: 400; font-size: 13px; margin-left: 4px; }
+.topbar .actions { display: flex; gap: 8px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+  font-family: var(--sans); font-size: 13px; font-weight: 500; color: var(--dim);
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md);
+  padding: 7px 13px; transition: border-color .15s, color .15s, background .15s;
+}
+.btn:hover { border-color: var(--border-hi); color: var(--ink); }
+
+/* ============ 页头 ============ */
+header.hero { margin-bottom: 40px; max-width: 720px; }
+.hero h1 { font-size: 32px; font-weight: 700; letter-spacing: -.02em; margin-bottom: 12px; }
+.hero p { font-size: 14.5px; line-height: 1.75; color: var(--dim); }
+.hero p b { color: var(--ink); font-weight: 600; }
+.hero .meta { display: flex; gap: 18px; margin-top: 18px; font-family: var(--mono); font-size: 11.5px; color: var(--faint); }
+.hero .meta span::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-right: 7px; vertical-align: 1px; }
+
+/* ============ 卡片网格 ============ */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 18px; }
+.card {
+  display: flex; flex-direction: column; text-decoration: none; color: var(--ink);
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+  overflow: hidden; box-shadow: var(--shadow);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); border-color: var(--border-hi); }
+.card:hover .wf { border-color: var(--accent-line); }
+
+/* ---- 布局线框预览 ---- */
+.shot { padding: 16px 16px 0; background: var(--surface-2); border-bottom: 1px solid var(--border); }
+.wf {
+  height: 168px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px 8px 0 0; border-bottom: none; overflow: hidden;
+  display: flex; transition: border-color .18s;
+}
+.wf .col { display: flex; flex-direction: column; min-width: 0; }
+/* 区块基元 */
+.zone { position: relative; }
+.zone .tag {
+  position: absolute; top: 5px; left: 6px; z-index: 2;
+  font-size: 8.5px; font-weight: 600; letter-spacing: .04em; color: var(--faint); white-space: nowrap;
+}
+.zone.hot .tag { color: var(--accent); }
+.zone.hot { background: var(--accent-soft); outline: 1px dashed var(--accent-line); outline-offset: -3px; }
+.wf-side { width: 21%; border-right: 1px solid var(--border); background: var(--surface-2); padding: 22px 7px 7px; display: flex; flex-direction: column; gap: 5px; }
+.wf-side i { display: block; height: 7px; border-radius: 3px; background: var(--border); }
+.wf-side i:first-child { background: var(--border-hi); width: 70%; }
+.wf-head { height: 20px; border-bottom: 1px solid var(--border); flex: none; }
+.wf-thread { flex: 1; padding: 24px 12px 8px; display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow: hidden; }
+.wf-thread i { display: block; height: 6px; border-radius: 3px; background: var(--border); }
+.wf-thread i.u { width: 42%; align-self: flex-end; background: var(--border-hi); }
+.wf-comp { height: 24px; margin: 6px 10px 8px; border: 1px solid var(--border-hi); border-radius: 7px; flex: none; position: relative; }
+.wf-comp::after { content: ''; position: absolute; right: 4px; top: 4px; width: 15px; height: 15px; border-radius: 5px; background: var(--accent); opacity: .85; }
+.wf-panel { border-left: 1px solid var(--border); padding: 22px 9px 8px; display: flex; flex-direction: column; gap: 6px; }
+.wf-panel i { display: block; height: 6px; border-radius: 3px; background: var(--border); }
+.wf-panel .box { height: 26px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface); }
+/* 小元素 */
+.chipline { display: flex; gap: 4px; }
+.chipline b { width: 12px; height: 12px; border-radius: 4px; background: var(--accent-soft); border: 1px solid var(--accent-line); flex: none; }
+.mini-card { border: 1px solid var(--accent-line); background: var(--accent-soft); border-radius: 6px; height: 40px; margin: 2px 0; }
+.gline { display: flex; align-items: center; gap: 5px; }
+.gline b { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--accent); flex: none; }
+.gline.done b { background: var(--accent); }
+.gline i { flex: 1; height: 5px; border-radius: 3px; background: var(--border); }
+.gline s { text-decoration: none; flex: none; font-family: var(--mono); font-size: 8px; color: var(--faint); }
+
+/* ---- 卡片文字 ---- */
+.body { padding: 15px 17px 6px; display: flex; gap: 12px; align-items: flex-start; }
+.idx {
+  font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--accent);
+  background: var(--accent-soft); border-radius: 6px; padding: 4px 7px; flex: none; margin-top: 2px;
+}
+.body h2 { font-size: 16.5px; font-weight: 600; letter-spacing: -.01em; }
+.body .en { font-family: var(--mono); font-size: 10.5px; color: var(--faint); margin-top: 2px; }
+.body p { font-size: 12.5px; line-height: 1.7; color: var(--dim); margin-top: 8px; }
+.foot { display: flex; align-items: center; gap: 6px; padding: 10px 17px 15px; margin-top: auto; }
+.foot i { font-style: normal; font-size: 11px; color: var(--dim); background: var(--surface-2); border: 1px solid var(--border); border-radius: 99px; padding: 3px 9px; }
+.foot .st { margin-left: auto; font-family: var(--mono); font-size: 10px; color: var(--faint); letter-spacing: .06em; }
+
+footer.page {
+  margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border);
+  display: flex; justify-content: space-between; font-size: 12px; color: var(--faint);
+}
+@media (max-width: 720px) { .hero h1 { font-size: 26px; } .wrap { padding: 28px 20px 56px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="topbar">
+  <div class="brand">
+    <span class="logo">💬</span>
+    对话产品模板
+    <span class="tagline">赋范空间 · 八形态布局基线</span>
+  </div>
+  <div class="actions">
+    <button class="btn" id="theme-toggle"><span id="theme-icon">🌙</span><span id="theme-label">深色</span></button>
+  </div>
+</div>
+
+<header class="hero">
+  <h1>8 种 Chatbot 产品布局,拿走即改</h1>
+  <p>
+    做 AI 产品时的<b>起点模板库</b>:每个模板都是一套完整的产品骨架 ——
+    侧边栏会话列表、消息流、输入框一应俱全,区别在于各自解决一类产品问题:
+    <b>RAG 怎么展示溯源</b>、<b>Agent 怎么展示中间链路</b>、<b>长任务怎么展示进度</b>。
+    线框图里<span style="color:var(--accent);font-weight:600">虚线高亮的区域</span>,就是该模板相对基线多出来的核心区。
+  </p>
+  <div class="meta">
+    <span>明暗双主题 · CSS token 化</span>
+    <span>零依赖 · 纯 HTML/CSS/JS</span>
+    <span>同一模拟场景贯穿</span>
+  </div>
+</header>
+
+<div class="grid">
+
+  <!-- 01 基线对话 -->
+  <a class="card" href="01-baseline.html">
+    <div class="shot"><div class="wf">
+      <div class="wf-side"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="col" style="flex:1">
+        <div class="wf-head"></div>
+        <div class="wf-thread zone hot"><span class="tag">思维链折叠 + 流式</span>
+          <i class="u"></i><i style="width:78%"></i><i style="width:64%"></i><i style="width:71%"></i><i class="u" style="width:30%"></i><i style="width:58%"></i>
+        </div>
+        <div class="wf-comp"></div>
+      </div>
+    </div></div>
+    <div class="body">
+      <span class="idx">01</span>
+      <div>
+        <h2>基线对话</h2>
+        <div class="en">基线三段式 · 对标 ChatGPT</div>
+        <p>标准三段式:侧栏会话 + 消息流 + 输入框。思维链折叠、流式打字、markdown 渲染、消息操作栏,全部做齐。</p>
+      </div>
+    </div>
+    <div class="foot"><i>会话管理</i><i>思维链</i><i>流式</i><span class="st" style="color:var(--accent)">✓ 可用</span></div>
+  </a>
+
+  <!-- 02 RAG 溯源 -->
+  <a class="card" href="02-rag-citations.html">
+    <div class="shot"><div class="wf">
+      <div class="wf-side"><i></i><i></i><i></i><i></i></div>
+      <div class="col" style="flex:1.5">
+        <div class="wf-head"></div>
+        <div class="wf-thread">
+          <i class="u"></i><i style="width:80%"></i>
+          <div class="chipline"><i style="width:52%;margin:0"></i><b></b><b></b></div>
+          <i style="width:66%"></i>
+        </div>
+        <div class="wf-comp"></div>
+      </div>
+      <div class="col zone hot" style="flex:.9"><span class="tag">来源面板 · 原文高亮</span>
+        <div class="wf-panel" style="flex:1;border-left:none">
+          <div class="box"></div><div class="box" style="border-color:var(--accent-line);background:var(--accent-soft)"></div><div class="box"></div><i style="width:80%"></i>
+        </div>
+      </div>
+    </div></div>
+    <div class="body">
+      <span class="idx">02</span>
+      <div>
+        <h2>RAG 溯源</h2>
+        <div class="en">引用溯源 · 对标 Perplexity</div>
+        <p>回答逐句带引用角标;右侧来源面板点击即定位原文段落并高亮。知识库问答、企业文档助手的标配形态。</p>
+      </div>
+    </div>
+    <div class="foot"><i>引用角标</i><i>原文定位</i><i>来源面板</i><span class="st" style="color:var(--accent)">✓ 可用</span></div>
+  </a>
+
+  <!-- 03 Agent 工作台 -->
+  <a class="card" href="03-agent-trace.html">
+    <div class="shot"><div class="wf">
+      <div class="wf-side"><i></i><i></i><i></i><i></i></div>
+      <div class="col" style="flex:1.4">
+        <div class="wf-head"></div>
+        <div class="wf-thread"><i class="u"></i><i style="width:74%"></i><i style="width:60%"></i></div>
+        <div class="wf-comp"></div>
+      </div>
+      <div class="col zone hot" style="flex:1"><span class="tag">执行链路 · 实时轨迹</span>
+        <div class="wf-panel" style="flex:1;border-left:none">
+          <div class="gline done"><b></b><i></i><s>2.1s</s></div>
+          <div class="gline done"><b></b><i style="width:80%"></i><s>4.0s</s></div>
+          <div class="gline"><b></b><i style="width:65%"></i><s>…</s></div>
+          <div class="gline"><b></b><i style="width:72%"></i><s></s></div>
+        </div>
+      </div>
+    </div></div>
+    <div class="body">
+      <span class="idx">03</span>
+      <div>
+        <h2>Agent 工作台</h2>
+        <div class="en">执行链路 · 对标 Manus</div>
+        <p>右侧执行链路面板:任务计划逐步点亮,每个工具调用可展开看输入输出、耗时、失败重试。Agent 产品的信任基础。</p>
+      </div>
+    </div>
+    <div class="foot"><i>计划步骤</i><i>工具调用</i><i>可展开详情</i><span class="st" style="color:var(--accent)">✓ 可用</span></div>
+  </a>
+
+  <!-- 04 生成式 UI -->
+  <a class="card" href="04-genui.html">
+    <div class="shot"><div class="wf">
+      <div class="wf-side"><i></i><i></i><i></i><i></i></div>
+      <div class="col" style="flex:1">
+        <div class="wf-head"></div>
+        <div class="wf-thread">
+          <i class="u"></i><i style="width:55%"></i>
+          <div class="mini-card zone hot" style="height:52px"><span class="tag" style="top:4px">回答长成组件</span></div>
+          <i style="width:44%"></i>
+        </div>
+        <div class="wf-comp"></div>
+      </div>
+    </div></div>
+    <div class="body">
+      <span class="idx">04</span>
+      <div>
+        <h2>生成式 UI</h2>
+        <div class="en">生成式 UI · 消息内组件</div>
+        <p>回答不止文字:消息流里直接长出可交互组件 —— 对比表格、图表、可提交的表单、可点的选项卡。</p>
+      </div>
+    </div>
+    <div class="foot"><i>组件消息</i><i>可交互</i><i>结构化</i><span class="st" style="color:var(--accent)">✓ 可用</span></div>
+  </a>
+
+  <!-- 05 画布协作 -->
+  <a class="card" href="05-canvas.html">
+    <div class="shot"><div class="wf">
+      <div class="col" style="flex:.9">
+        <div class="wf-head"></div>
+        <div class="wf-thread"><i class="u"></i><i style="width:82%"></i><i class="u" style="width:36%"></i><i style="width:68%"></i></div>
+        <div class="wf-comp"></div>
+      </div>
+      <div class="col zone hot" style="flex:1.3"><span class="tag">画布 · 文档随对话生长</span>
+        <div class="wf-panel" style="flex:1;border-left:none;padding-top:24px">
+          <i style="width:48%;height:8px;background:var(--border-hi)"></i>
+          <i style="width:92%"></i><i style="width:86%;background:var(--accent-line)"></i><i style="width:90%"></i><i style="width:64%"></i>
+        </div>
+      </div>
+    </div></div>
+    <div class="body">
+      <span class="idx">05</span>
+      <div>
+        <h2>画布协作</h2>
+        <div class="en">画布协作 · 对标 Artifacts / Canvas</div>
+        <p>左边对话、右边作品:文档 / 代码随对话迭代,每次修改高亮 diff,选中任意段落"只改这里"。</p>
+      </div>
+    </div>
+    <div class="foot"><i>双栏</i><i>局部修改</i><i>版本历史</i><span class="st" style="color:var(--accent)">✓ 可用</span></div>
+  </a>
+
+  <!-- 06 深度研究 -->
+  <a class="card" href="06-research.html">
+    <div class="shot"><div class="wf">
+      <div class="wf-side"><i></i><i></i><i></i><i></i></div>
+      <div class="col" style="flex:1">
+        <div class="wf-head"></div>
+        <div class="wf-thread">
+          <i class="u"></i>
+          <div class="zone hot" style="padding:18px 8px 8px;border-radius:6px"><span class="tag" style="top:4px">研究进度 · 信源池</span>
+            <div class="gline done" style="margin-bottom:5px"><b></b><i></i></div>
+            <div class="gline done" style="margin-bottom:5px"><b></b><i style="width:76%"></i></div>
+            <div class="chipline"><b></b><b></b><b></b><b></b></div>
+          </div>
+          <i style="width:70%"></i><i style="width:58%"></i>
+        </div>
+        <div class="wf-comp"></div>
+      </div>
+    </div></div>
+    <div class="body">
+      <span class="idx">06</span>
+      <div>
+        <h2>深度研究</h2>
+        <div class="en">深度研究 · 长任务</div>
+        <p>分钟级长任务的形态:阶段进度、信息源逐个入库、可中途追加指令,最终交付带完整引用的结构化报告。</p>
+      </div>
+    </div>
+    <div class="foot"><i>阶段进度</i><i>信源池</i><i>报告视图</i><span class="st" style="color:var(--accent)">✓ 可用</span></div>
+  </a>
+
+  <!-- 07 分支对话 -->
+  <a class="card" href="07-branching.html">
+    <div class="shot"><div class="wf">
+      <div class="wf-side"><i></i><i></i><i></i><i></i></div>
+      <div class="col" style="flex:1">
+        <div class="zone hot" style="height:44px;border-bottom:1px solid var(--border)"><span class="tag">对话树导航</span>
+          <svg width="100%" height="44" viewBox="0 0 220 44" preserveAspectRatio="xMidYMid meet" style="display:block">
+            <path d="M30,22 H70 M70,22 C90,22 90,12 110,12 M70,22 C90,22 90,32 110,32 M110,12 H150 M110,32 H150" fill="none" stroke="var(--accent-line)" stroke-width="1.5"/>
+            <circle cx="30" cy="22" r="4" fill="var(--accent)"/>
+            <circle cx="70" cy="22" r="4" fill="var(--accent)"/>
+            <circle cx="110" cy="12" r="4" fill="var(--accent)"/>
+            <circle cx="110" cy="32" r="4" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+            <circle cx="150" cy="12" r="4" fill="var(--accent)"/>
+            <circle cx="150" cy="32" r="4" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+          </svg>
+        </div>
+        <div class="wf-thread"><i class="u"></i><i style="width:76%"></i><i style="width:62%"></i></div>
+        <div class="wf-comp"></div>
+      </div>
+    </div></div>
+    <div class="body">
+      <span class="idx">07</span>
+      <div>
+        <h2>分支对话</h2>
+        <div class="en">分支对话 · 非线性树</div>
+        <p>对话是一棵树:任意消息处分叉出平行方案,顶部树形导航切换路径,两条分支可并排对比。</p>
+      </div>
+    </div>
+    <div class="foot"><i>对话树</i><i>分叉</i><i>并排对比</i><span class="st" style="color:var(--accent)">✓ 可用</span></div>
+  </a>
+
+  <!-- 08 多智能体 -->
+  <a class="card" href="08-multi-agent.html">
+    <div class="shot"><div class="wf">
+      <div class="wf-side"><i></i><i></i><i></i><i></i></div>
+      <div class="col" style="flex:1.4">
+        <div class="wf-head"></div>
+        <div class="wf-thread"><i class="u"></i><i style="width:70%"></i><i style="width:56%"></i></div>
+        <div class="wf-comp"></div>
+      </div>
+      <div class="col zone hot" style="flex:1"><span class="tag">团队面板 · 并行状态</span>
+        <div class="wf-panel" style="flex:1;border-left:none">
+          <div class="gline done"><b></b><i></i></div>
+          <div class="gline done"><b></b><i style="width:70%"></i></div>
+          <div class="gline"><b></b><i style="width:78%"></i></div>
+          <i style="width:60%;margin-top:4px"></i><i style="width:80%"></i>
+        </div>
+      </div>
+    </div></div>
+    <div class="body">
+      <span class="idx">08</span>
+      <div>
+        <h2>多智能体</h2>
+        <div class="en">多智能体 · 团队编排</div>
+        <p>一个提问唤起一支队伍:右侧团队面板显示每个智能体的分工与实时状态,消息流里标注"谁在说话"。</p>
+      </div>
+    </div>
+    <div class="foot"><i>角色分工</i><i>并行状态</i><i>发言署名</i><span class="st" style="color:var(--accent)">✓ 可用</span></div>
+  </a>
+
+</div>
+
+<footer class="page">
+  <div>8 个模板全部可用 · 点击卡片进入 · token 在 shared.css,数据与交互各自独立</div>
+  <div>赋范空间 · 对话产品模板</div>
+</footer>
+
+</div>
+
+<script>
+(function () {
+  const root = document.documentElement;
+  const btn = document.getElementById('theme-toggle');
+  const icon = document.getElementById('theme-icon');
+  const label = document.getElementById('theme-label');
+  const saved = localStorage.getItem('ct-theme');
+  const prefers = matchMedia('(prefers-color-scheme: dark)').matches;
+  let dark = saved ? saved === 'dark' : prefers;
+  apply();
+  btn.addEventListener('click', () => { dark = !dark; localStorage.setItem('ct-theme', dark ? 'dark' : 'light'); apply(); });
+  function apply() {
+    root.dataset.theme = dark ? 'dark' : 'light';
+    icon.textContent = dark ? '☀️' : '🌙';
+    label.textContent = dark ? '浅色' : '深色';
+  }
+})();
+</script>
+</body>
+</html>

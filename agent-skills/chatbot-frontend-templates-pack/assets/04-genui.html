@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>04 生成式 UI · Chat Templates</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+/* ---- 消息内组件通用 ---- */
+.widget {
+  border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface);
+  box-shadow: var(--shadow); margin: 12px 0; overflow: hidden; max-width: 620px;
+}
+.w-head { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.w-head .w-ico { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font-size: 13px; background: var(--accent-soft); }
+.w-head b { font-size: 13.5px; }
+.w-head small { font-family: var(--mono); font-size: 9.5px; color: var(--faint); margin-left: auto; letter-spacing: .06em; }
+.w-tabs { display: flex; gap: 2px; padding: 8px 12px 0; }
+.w-tabs button {
+  font-size: 12px; font-weight: 500; color: var(--dim); background: none; border: none;
+  padding: 6px 12px; border-radius: var(--r-sm) var(--r-sm) 0 0; border-bottom: 2px solid transparent;
+}
+.w-tabs button.on { color: var(--accent); border-bottom-color: var(--accent); }
+.w-pane { padding: 14px 16px 16px; }
+.w-pane[hidden] { display: none; }
+
+/* 对比表 */
+table.cmp { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.cmp th { text-align: left; font-weight: 600; color: var(--dim); font-size: 11px; padding: 7px 10px; border-bottom: 1px solid var(--border); }
+.cmp td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.cmp tr:last-child td { border-bottom: none; }
+.cmp td:first-child { font-weight: 600; white-space: nowrap; }
+.cmp .num { font-family: var(--mono); font-size: 12px; text-align: right; }
+.cmp .best { color: var(--accent); font-weight: 600; }
+
+/* 柱状图 */
+.chart { display: flex; gap: 26px; align-items: flex-end; height: 150px; padding: 8px 10px 0; }
+.chart .col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
+.chart .bar {
+  width: 100%; max-width: 72px; border-radius: 6px 6px 0 0;
+  background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 55%, transparent));
+  transform-origin: bottom; animation: grow .7s cubic-bezier(.2,.8,.2,1) backwards;
+}
+.chart .col:nth-child(2) .bar { animation-delay: .1s; }
+.chart .col:nth-child(3) .bar { animation-delay: .2s; }
+@keyframes grow { from { transform: scaleY(0); } }
+.chart .val { font-family: var(--mono); font-size: 11.5px; }
+.chart .lbl { font-size: 11px; color: var(--dim); }
+
+/* 方案选择表单 */
+.opt-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 9px; }
+.opt {
+  border: 1px solid var(--border); border-radius: var(--r-md); padding: 11px 12px; cursor: pointer;
+  transition: border-color .15s, box-shadow .15s; background: var(--surface);
+}
+.opt:hover { border-color: var(--border-hi); }
+.opt.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.opt b { display: flex; align-items: center; gap: 6px; font-size: 12.5px; margin-bottom: 5px; }
+.opt b i { font-style: normal; width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--border-hi); flex: none; transition: all .15s; }
+.opt.on b i { border-color: var(--accent); background: var(--accent); box-shadow: inset 0 0 0 2.5px var(--surface); }
+.opt p { font-size: 11px; line-height: 1.6; color: var(--dim); }
+.w-foot { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--border); background: var(--surface-2); }
+.w-note { font-size: 11.5px; color: var(--dim); flex: 1; }
+.w-note b { color: var(--accent); }
+.w-cta {
+  border: none; border-radius: var(--r-md); background: var(--accent); color: var(--accent-ink);
+  font-size: 12.5px; font-weight: 600; padding: 8px 16px; transition: opacity .15s, transform .1s;
+}
+.w-cta:hover { opacity: .88; }
+.w-cta:active { transform: scale(.97); }
+</style>
+</head>
+<body data-ai-name="Copilot">
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="sb-head"><span class="logo">💬</span><a href="index.html">Chat Templates</a><span class="tpl">TPL-04</span></div>
+    <button class="new-chat"><b>＋</b> 新建对话</button>
+    <nav class="convs">
+      <div class="group">今天</div>
+      <button class="item on">AI 客服技术方案调研</button>
+      <button class="item">下季度预算怎么分</button>
+      <div class="group">昨天</div>
+      <button class="item">查一下东京下周天气</button>
+      <button class="item">对比三款空气净化器</button>
+      <div class="group">前 7 天</div>
+      <button class="item">帮我订会议室</button>
+      <button class="item">团队 OKR 打分</button>
+    </nav>
+    <div class="sb-foot"><span class="ava">木</span>木鱼<span class="plan">PRO</span></div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="crumb"><a href="index.html">模板库</a> / <b>04 生成式 UI</b></div>
+      <span class="model-pill"><i></i>Nova-4.5 · 组件模式 ▾</span>
+      <div class="tb-spacer"></div>
+      <button class="tb-btn" id="theme-toggle" data-silent="1"></button>
+      <button class="tb-btn">分享</button>
+    </header>
+
+    <div class="thread-wrap">
+      <div class="thread" id="thread">
+
+        <div class="msg user">
+          <div class="ava">你</div>
+          <div class="body">
+            <div class="who">你 <span class="t">14:02</span></div>
+            <div class="prose">帮我调研一下,2026 年做 AI 客服该选什么技术方案?给我能对比、能直接拍板的东西,别全是字。</div>
+          </div>
+        </div>
+
+        <div class="msg ai">
+          <div class="ava">AI</div>
+          <div class="body">
+            <div class="who">Copilot <span class="t">14:02</span></div>
+            <div class="prose"><p>好,把调研结果做成了可交互的对比组件 —— 表格看细节,图表看成本,选中方案后一键生成立项摘要:</p></div>
+
+            <!-- 组件 1:对比表 + 成本图 -->
+            <div class="widget">
+              <div class="w-head"><span class="w-ico">📊</span><b>三条技术路线对比</b><small>GENERATED · 数据截至 2026-07</small></div>
+              <div class="w-tabs">
+                <button class="on" data-tab="t1">能力对比</button>
+                <button data-tab="t2">首年成本</button>
+              </div>
+              <div class="w-pane" id="t1">
+                <table class="cmp">
+                  <tr><th>维度</th><th>A · RAG 问答</th><th>B · Agent 办事</th><th>C · 采购 SaaS</th></tr>
+                  <tr><td>上线周期</td><td class="best">2~4 周</td><td>2~3 个月</td><td>1~2 周</td></tr>
+                  <tr><td>能"办事"</td><td>✗ 仅答问题</td><td class="best">✓ 退款/改单</td><td>部分,看厂商</td></tr>
+                  <tr><td>知识可控</td><td class="best">✓ 全自控</td><td class="best">✓ 全自控</td><td>✗ 黑盒</td></tr>
+                  <tr><td>团队要求</td><td>1~2 名后端</td><td>3+ 名 · 含平台</td><td class="best">无需研发</td></tr>
+                  <tr><td>合规溯源</td><td class="best">✓ 可精确到段落</td><td>✓ 全链路日志</td><td>△ 依赖厂商</td></tr>
+                </table>
+              </div>
+              <div class="w-pane" id="t2" hidden>
+                <div class="chart">
+                  <div class="col"><span class="val">¥18万</span><div class="bar" style="height:34%"></div><span class="lbl">A · RAG</span></div>
+                  <div class="col"><span class="val">¥52万</span><div class="bar" style="height:96%"></div><span class="lbl">B · Agent</span></div>
+                  <div class="col"><span class="val">¥30万</span><div class="bar" style="height:56%"></div><span class="lbl">C · SaaS</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 组件 2:方案选择表单 -->
+            <div class="widget">
+              <div class="w-head"><span class="w-ico">🎯</span><b>选定方案,生成立项摘要</b><small>INTERACTIVE</small></div>
+              <div class="w-pane">
+                <div class="opt-grid" id="opts">
+                  <div class="opt on" data-plan="A">
+                    <b><i></i>路线 A</b>
+                    <p>RAG 问答先行,3 个月后复评是否加建 Agent。</p>
+                  </div>
+                  <div class="opt" data-plan="B">
+                    <b><i></i>路线 B</b>
+                    <p>直接建 Agent 办事型,一步到位接工单系统。</p>
+                  </div>
+                  <div class="opt" data-plan="C">
+                    <b><i></i>路线 C</b>
+                    <p>采购 SaaS 快速止血,内部只做知识库整理。</p>
+                  </div>
+                </div>
+              </div>
+              <div class="w-foot">
+                <span class="w-note" id="opt-note">当前选择 <b>路线 A</b> · 预估首年 ¥18万 · 2~4 周上线</span>
+                <button class="w-cta" id="confirm-btn">生成立项摘要</button>
+              </div>
+            </div>
+
+            <div class="msg-actions"><button>📋 复制</button><button>🔄 重新生成</button><button>👍</button><button>👎</button></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="composer">
+      <div class="inner">
+        <div class="c-box">
+          <textarea rows="1" placeholder="继续追问,或让它把组件改成别的形态…(演示环境)"></textarea>
+          <button class="send" data-silent="1">↑</button>
+        </div>
+        <div class="c-hint">回答以 <b>可交互组件</b> 呈现 · 组件内的选择会回传给模型作为上下文</div>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script src="shared.js"></script>
+<script>
+CT.init();
+
+/* tab 切换 */
+document.querySelectorAll('.w-tabs button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tabs = btn.closest('.widget');
+    tabs.querySelectorAll('.w-tabs button').forEach(b => b.classList.toggle('on', b === btn));
+    tabs.querySelectorAll('.w-pane').forEach(p => p.hidden = p.id !== btn.dataset.tab);
+  });
+});
+
+/* 方案选择 */
+const NOTES = {
+  A: '当前选择 <b>路线 A</b> · 预估首年 ¥18万 · 2~4 周上线',
+  B: '当前选择 <b>路线 B</b> · 预估首年 ¥52万 · 需 3 人以上团队',
+  C: '当前选择 <b>路线 C</b> · 预估首年 ¥30万 · 注意知识黑盒风险',
+};
+let plan = 'A';
+document.getElementById('opts').addEventListener('click', e => {
+  const opt = e.target.closest('.opt');
+  if (!opt) return;
+  plan = opt.dataset.plan;
+  document.querySelectorAll('.opt').forEach(o => o.classList.toggle('on', o === opt));
+  document.getElementById('opt-note').innerHTML = NOTES[plan];
+});
+
+/* 提交 → 追加一条 AI 消息(组件选择回传给模型的闭环演示) */
+document.getElementById('confirm-btn').addEventListener('click', () => {
+  CT.toast('选择已回传模型:路线 ' + plan);
+  const thread = document.getElementById('thread');
+  const ai = CT.aiMsg('Copilot');
+  thread.appendChild(ai);
+  const SUMMARY = {
+    A: '<p><strong>立项摘要 · 路线 A(RAG 问答先行)</strong></p><ul><li>范围:知识库问答 + 引用溯源 + 低置信转人工;</li><li>资源:后端 ×2、知识运营 ×1,预算 ¥18万/首年;</li><li>里程碑:W2 灰度 10% 流量,W4 全量;M3 复评是否立项 Agent 办事型。</li></ul><p>可以直接把这段发给老板 —— 需要我顺便生成风险清单吗?</p>',
+    B: '<p><strong>立项摘要 · 路线 B(Agent 办事型)</strong></p><ul><li>范围:12 类标准工单接管,资金操作全部人工审批;</li><li>资源:后端 ×2、平台 ×1、风控 ×1,预算 ¥52万/首年;</li><li>里程碑:M1 打通工单读接口,M2 上线 3 类低风险工单,M3 复盘扩量。</li></ul><p>提醒:这条路线的最大风险是工单系统写接口的联调周期,建议先确认接口方排期。</p>',
+    C: '<p><strong>立项摘要 · 路线 C(采购 SaaS)</strong></p><ul><li>范围:厂商选型(3 家 POC)+ 知识库整理迁移;</li><li>资源:产品 ×1 兼职即可,预算 ¥30万/首年(含license);</li><li>里程碑:W2 完成 POC 对比,W4 签约上线。</li></ul><p>提醒:合同里务必写明<strong>数据不出域</strong>和<strong>可导出</strong>条款,否则未来切换成本极高。</p>',
+  };
+  CT.stream(ai.querySelector('.prose'), SUMMARY[plan], { cps: 130 });
+});
+
+CT.demoReply = () => '<p>演示环境:真实实现里,模型会根据你的追问决定是回文字还是<strong>重新生成组件</strong>(改表格列、换图表类型、加筛选器)。组件 schema 由模型输出,前端按 schema 渲染。</p>';
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+# Codex 专属配置（仅随 .agents 流派交付）
+interface:
+  display_name: "编译式 RAG 包"
+  short_description: "把资料编译成可读可治理的 wiki / 知识图谱：源不可变 · 源变必重编译 · 三元选型"
+
+policy:
+  allow_implicit_invocation: true

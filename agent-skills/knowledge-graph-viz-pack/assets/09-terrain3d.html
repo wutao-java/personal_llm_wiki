@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>09 · 语义山脉 — 3D 知识地形</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  #stage { cursor: grab; }
+  #stage:active { cursor: grabbing; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div class="scanline"></div>
+
+<div class="hud hud-top">
+  <div class="hud-title">
+    <div class="kicker">Exhibit 09 · Terrain Mesh · Knowledge as Landscape</div>
+    <h1>语义<em>山脉</em></h1>
+    <div class="sub">03 号地形图的真 3D 版:知识密度不再是等高线,而是隆起的山体 —— 概念越密集,山峰越高。左键旋转、滚轮缩放、右键平移,像看 Google Earth 一样看知识。</div>
+  </div>
+  <a class="back" href="index.html">◀ 星图馆</a>
+</div>
+
+<div class="legend" id="legend"></div>
+<div class="readout">
+  <div><b>192×120</b> HEIGHT GRID · <b>8</b> PEAKS</div>
+  <div class="controls">
+    <button class="ctl on" id="btn-orbit">自动巡航 ⏸</button>
+    <button class="ctl on" id="btn-wire">全息线框 ▦</button>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script type="module">
+import * as THREE from 'https://esm.sh/three@0.170.0';
+import { OrbitControls } from 'https://esm.sh/three@0.170.0/examples/jsm/controls/OrbitControls.js';
+
+const DOMAINS = KG.DOMAINS;
+const rand = KG.mulberry32(7);
+const W = 1600, H = 1000, GW = 192, GH = 120;
+
+/* ---------- 与 03 同源的密度场 → 高度图 ---------- */
+function gauss() { return (rand() + rand() + rand() - 1.5) / 1.5; }
+const anchors = [];
+DOMAINS.forEach((d, di) => {
+  const A = (di / DOMAINS.length) * Math.PI * 2 - Math.PI / 2;
+  const cx = W / 2 + Math.cos(A) * W * 0.30;
+  const cy = H / 2 + Math.sin(A) * H * 0.30;
+  d._cx = cx; d._cy = cy;
+  KG.nodes.filter(n => n.domain === di && !n.hub).forEach(() => {
+    anchors.push({ domain: di, x: cx + gauss() * W * 0.085, y: cy + gauss() * H * 0.085 });
+  });
+});
+const grid = new Float32Array(GW * GH);
+for (let i = 0; i < 4800; i++) {
+  const a = anchors[Math.floor(rand() * anchors.length)];
+  const px = a.x + gauss() * 34, py = a.y + gauss() * 34;
+  const gx = Math.round(px / W * (GW - 1)), gy = Math.round(py / H * (GH - 1));
+  if (gx >= 0 && gy >= 0 && gx < GW && gy < GH) grid[gy * GW + gx] += 1;
+}
+// 盒式模糊 × 4 → 平滑山体
+const tmp = new Float32Array(GW * GH);
+for (let pass = 0; pass < 4; pass++) {
+  for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) {
+    let s = 0, c = 0;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      const nx = x + dx, ny = y + dy;
+      if (nx >= 0 && ny >= 0 && nx < GW && ny < GH) { s += grid[ny * GW + nx]; c++; }
+    }
+    tmp[y * GW + x] = s / c;
+  }
+  grid.set(tmp);
+}
+let maxH = 0; for (let i = 0; i < grid.length; i++) maxH = Math.max(maxH, grid[i]);
+
+/* ---------- 场景 ---------- */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x04060d);
+scene.fog = new THREE.FogExp2(0x04060d, 0.00048);
+
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 1, 8000);
+camera.position.set(0, 620, 900);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+document.getElementById('stage').appendChild(renderer.domElement);
+
+/* ---------- 地形网格 ---------- */
+const ELEV = 210;
+const geo = new THREE.PlaneGeometry(W, H, GW - 1, GH - 1);
+geo.rotateX(-Math.PI / 2);
+const pos = geo.attributes.position;
+const colors = new Float32Array(pos.count * 3);
+const stops = [                                 // 海拔配色:深海 → 辉光雪峰
+  [0.00, 0x071224], [0.18, 0x0c2f46], [0.42, 0x11616e],
+  [0.68, 0x18a5ab], [0.86, 0x4fe3e0], [1.00, 0xeafcff],
+].map(([t, c]) => [t, new THREE.Color(c)]);
+function ramp(t) {
+  for (let i = 1; i < stops.length; i++) if (t <= stops[i][0]) {
+    const [t0, c0] = stops[i - 1], [t1, c1] = stops[i];
+    return c0.clone().lerp(c1, (t - t0) / (t1 - t0));
+  }
+  return stops[stops.length - 1][1];
+}
+for (let i = 0; i < pos.count; i++) {
+  const gx = i % GW, gy = Math.floor(i / GW);
+  const h = grid[gy * GW + gx] / maxH;
+  pos.setY(i, Math.pow(h, 1.25) * ELEV);
+  const c = ramp(h);
+  colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+}
+geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+geo.computeVertexNormals();
+
+const terrain = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+  vertexColors: true, roughness: 0.62, metalness: 0.12,
+  emissive: 0x0a2634, emissiveIntensity: 0.55, flatShading: false,
+}));
+scene.add(terrain);
+
+const wire = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+  wireframe: true, color: 0x22d3ee, transparent: true, opacity: 0.065,
+}));
+wire.position.y = 0.6;
+scene.add(wire);
+
+/* ---------- 灯光 ---------- */
+scene.add(new THREE.AmbientLight(0x8fb8d8, 0.5));
+const sun = new THREE.DirectionalLight(0xbfefff, 1.5);
+sun.position.set(400, 700, 300);
+scene.add(sun);
+const rim = new THREE.PointLight(0xd946ef, 40000, 0, 1.8);   // 品红补光,压住单调
+rim.position.set(-600, 300, -400);
+scene.add(rim);
+
+/* ---------- 星空 ---------- */
+const starGeo = new THREE.BufferGeometry();
+const starPos = new Float32Array(1200 * 3);
+for (let i = 0; i < 1200; i++) {
+  const r = 2600 + rand() * 1400, th = rand() * Math.PI * 2, ph = Math.acos(2 * rand() - 1);
+  starPos[i * 3] = r * Math.sin(ph) * Math.cos(th);
+  starPos[i * 3 + 1] = Math.abs(r * Math.cos(ph)) * 0.7 + 60;
+  starPos[i * 3 + 2] = r * Math.sin(ph) * Math.sin(th);
+}
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0x9fd8ff, size: 2.2, sizeAttenuation: false, transparent: true, opacity: 0.7 })));
+
+/* ---------- 领域名悬浮标牌(Sprite)+ 光柱 ---------- */
+function labelSprite(text, en, color) {
+  const cv = document.createElement('canvas'); cv.width = 512; cv.height = 160;
+  const c = cv.getContext('2d');
+  c.textAlign = 'center';
+  c.shadowColor = color; c.shadowBlur = 26;
+  c.fillStyle = '#eaf6ff'; c.font = '800 58px Unbounded, "PingFang SC", sans-serif';
+  c.fillText(text, 256, 78);
+  c.shadowBlur = 0; c.fillStyle = 'rgba(160,190,220,.85)'; c.font = '600 26px "IBM Plex Mono", monospace';
+  c.fillText(en, 256, 122);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthWrite: false }));
+  sp.scale.set(220, 68, 1);
+  return sp;
+}
+DOMAINS.forEach(d => {
+  const wx = d._cx - W / 2, wz = d._cy - H / 2;
+  const gx = Math.round(d._cx / W * (GW - 1)), gy = Math.round(d._cy / H * (GH - 1));
+  const hy = Math.pow(grid[gy * GW + gx] / maxH, 1.25) * ELEV;
+  const sp = labelSprite(d.name, d.en, d.color);
+  sp.position.set(wx, hy + 92, wz);
+  scene.add(sp);
+  const beam = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(wx, hy + 2, wz), new THREE.Vector3(wx, hy + 62, wz)]),
+    new THREE.LineBasicMaterial({ color: d.color, transparent: true, opacity: 0.75 })
+  );
+  scene.add(beam);
+});
+
+/* ---------- 控制 ---------- */
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.06;
+controls.autoRotate = true; controls.autoRotateSpeed = 0.5;
+controls.maxPolarAngle = Math.PI / 2 - 0.06;
+controls.minDistance = 220; controls.maxDistance = 2200;
+
+const btnOrbit = document.getElementById('btn-orbit');
+btnOrbit.onclick = () => {
+  controls.autoRotate = !controls.autoRotate;
+  btnOrbit.textContent = controls.autoRotate ? '自动巡航 ⏸' : '手动驾驶 ▶';
+  btnOrbit.classList.toggle('on', controls.autoRotate);
+};
+renderer.domElement.addEventListener('pointerdown', () => {
+  if (!controls.autoRotate) return;
+  controls.autoRotate = false;
+  btnOrbit.textContent = '手动驾驶 ▶'; btnOrbit.classList.remove('on');
+});
+const btnWire = document.getElementById('btn-wire');
+btnWire.onclick = () => { wire.visible = !wire.visible; btnWire.classList.toggle('on', wire.visible); };
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+(function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
+
+const legend = document.getElementById('legend');
+DOMAINS.forEach(d => {
+  const el = document.createElement('span');
+  el.className = 'chip'; el.style.setProperty('--c', d.color);
+  el.innerHTML = `<i></i>${d.name}`;
+  legend.appendChild(el);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+# Codex 专属配置（仅随 .agents 流派交付）
+interface:
+  display_name: "对话产品模板 · 八形态基线画廊"
+  short_description: "按'信任来自哪'选八形态基线模板 · 搬共享层契约起步 · 接真后端只改 CT.demoReply · 明暗双主题验收"
+
+policy:
+  allow_implicit_invocation: true

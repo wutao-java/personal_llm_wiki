@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>07 · 时间演化 — 知识图谱的延时摄影</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  #stage { cursor: default; }
+  .timedeck {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+    z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 10px;
+    width: min(680px, 86vw);
+  }
+  .year-display {
+    font-family: var(--display); font-weight: 800;
+    font-size: clamp(44px, 6vw, 76px); line-height: 1;
+    color: var(--ink); letter-spacing: .04em;
+    text-shadow: 0 0 40px rgba(34,211,238,.45);
+    font-variant-numeric: tabular-nums;
+  }
+  .deck-row { display: flex; align-items: center; gap: 14px; width: 100%; }
+  input[type=range] {
+    flex: 1; appearance: none; height: 2px;
+    background: linear-gradient(90deg, var(--glow-cyan) var(--p, 0%), var(--line) var(--p, 0%));
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    appearance: none; width: 14px; height: 14px; border-radius: 50%;
+    background: var(--glow-cyan); box-shadow: 0 0 14px var(--glow-cyan);
+    border: 2px solid var(--void);
+  }
+  .births {
+    position: fixed; right: 28px; top: 108px; z-index: 10; text-align: right;
+    font-size: 11px; line-height: 2.1; color: var(--ink-dim); max-width: 240px;
+  }
+  .births .b-item { animation: hud-in .5s both; }
+  .births .b-item b { font-weight: 600; }
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+<div class="scanline"></div>
+
+<div class="hud hud-top">
+  <div class="hud-title">
+    <div class="kicker">Exhibit 07 · Temporal Graph · 1940 → 2026</div>
+    <h1>时间<em>演化</em></h1>
+    <div class="sub">知识图谱从来不是静态的。从 1940 年代的信息论与博弈论开始,看 86 年里 120 个概念如何逐年诞生、彼此勾连,长成今天的 AI 版图。</div>
+  </div>
+  <a class="back" href="index.html">◀ 星图馆</a>
+</div>
+
+<div class="births" id="births"></div>
+<div class="legend" id="legend"></div>
+
+<div class="timedeck">
+  <div class="year-display" id="year-num">1940</div>
+  <div class="deck-row">
+    <button class="ctl on" id="btn-play">播放 ⏸</button>
+    <input type="range" id="slider" min="1940" max="2026" step="0.05" value="1940">
+    <button class="ctl" id="btn-speed" data-s="1">1×</button>
+    <button class="ctl" id="btn-reset">↺</button>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script>
+const DOMAINS = KG.DOMAINS;
+const rand = KG.mulberry32(99);
+
+/* ---------- 概念诞生年份(与 data.js 的 CONCEPTS 顺序一一对应) ---------- */
+const YEARS = {
+  llm:        [2017,2014,2021,2022,2022,2020,2022,2023,2021,2022,2022,2023,2023,2022],
+  agent:      [2022,2023,2023,2023,2023,2024,2024,2024,2023,2024,2024,2022,2023,2025],
+  multimodal: [2020,2021,2020,2024,2012,2016,2021,2015,2023,2018,2020,2019,2013,2023],
+  theory:     [1986,1951,1948,1953,2000,1971,2018,2019,1995,2000,1944,1942,2023,1997],
+  compute:    [2012,2016,2019,2019,2016,2015,2022,2019,2022,2020,2018,2021,2023,2021],
+  data:       [2008,2021,2023,2022,2010,2021,2020,2012,2023,2019,2023,2019,2021,2009],
+  safety:     [2022,2022,2023,2017,2022,2022,2018,2023,2023,2018,2023,2016,2023,2023],
+  app:        [2021,2018,2020,2023,2015,2023,2016,2022,2023,2022,2023,2016,2024,2023],
+};
+
+const nodes = KG.nodes.map(n => ({ ...n }));
+nodes.forEach(n => {
+  if (n.hub) return;
+  const ci = +n.id.split('-')[1];
+  n.year = YEARS[DOMAINS[n.domain].id][ci];
+});
+// 枢纽在本域第一个概念诞生时出现
+DOMAINS.forEach((d, di) => {
+  const first = Math.min(...YEARS[d.id]);
+  nodes.find(n => n.hub && n.domain === di).year = first;
+});
+const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
+const allLinks = KG.links.map(l => ({ source: byId[l.source], target: byId[l.target], weight: l.weight }));
+allLinks.forEach(l => l.year = Math.max(l.source.year, l.target.year));
+
+/* ---------- 画布与力仿真 ---------- */
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+let dpr = 1;
+function resize() {
+  dpr = devicePixelRatio || 1;
+  canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr;
+  canvas.style.width = innerWidth + 'px'; canvas.style.height = innerHeight + 'px';
+  sim.force('center', d3.forceCenter(innerWidth / 2, innerHeight / 2 + 10));
+}
+
+// 初始位置:各域枢纽在圆环上,概念埋伏在枢纽旁
+nodes.forEach(n => {
+  const A = (n.domain / DOMAINS.length) * Math.PI * 2 - Math.PI / 2;
+  n.x = innerWidth / 2 + Math.cos(A) * 260 + (rand() - 0.5) * 60;
+  n.y = innerHeight / 2 + Math.sin(A) * 260 + (rand() - 0.5) * 60;
+});
+
+const sim = d3.forceSimulation()
+  .force('charge', d3.forceManyBody().strength(-95).theta(0.9))
+  .force('link', d3.forceLink().distance(l => l.weight >= 2 ? 46 : 82).strength(0.5))
+  .force('center', d3.forceCenter(innerWidth / 2, innerHeight / 2 + 10))
+  .force('collide', d3.forceCollide(d => d.hub ? 26 : 12))
+  .velocityDecay(0.32)
+  .alphaDecay(0.015)
+  .on('tick', draw);
+resize();
+addEventListener('resize', resize);
+
+/* ---------- 时间推进 ---------- */
+let year = 1940, playing = true, speed = 1;
+let active = [], activeLinks = [];
+const births = document.getElementById('births');
+
+function setYear(y, reheat = true) {
+  const prev = year; year = y;
+  const bornNow = nodes.filter(n => n.year <= year);
+  const linksNow = allLinks.filter(l => l.year <= year);
+  if (bornNow.length !== active.length || linksNow.length !== activeLinks.length) {
+    // 新生节点从枢纽处弹出
+    bornNow.filter(n => !active.includes(n) && !n.hub).forEach(n => {
+      const hub = nodes.find(h => h.hub && h.domain === n.domain);
+      if (hub && hub.year <= year) { n.x = hub.x + (rand() - .5) * 40; n.y = hub.y + (rand() - .5) * 40; }
+      n.bornAt = performance.now();
+    });
+    active = bornNow; activeLinks = linksNow;
+    sim.nodes(active);
+    sim.force('link').links(activeLinks);
+    if (reheat) sim.alpha(Math.min(0.6, 0.25 + activeLinks.length * 0.001)).restart();
+    // 右侧"本年诞生"公告
+    const fresh = active.filter(n => !n.hub && Math.abs(n.year - Math.floor(year)) < 1 && year - n.year >= 0 && year - n.year < 1.6);
+    births.innerHTML = fresh.slice(-7).reverse().map(n =>
+      `<div class="b-item" style="color:${DOMAINS[n.domain].color}"><b>${n.year}</b> · ${n.name}</div>`).join('');
+  }
+  document.getElementById('year-num').textContent = Math.floor(year);
+  const slider = document.getElementById('slider');
+  slider.value = year;
+  slider.style.setProperty('--p', ((year - 1940) / 86 * 100) + '%');
+}
+
+/* ---------- 绘制 ---------- */
+function draw() {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#04060d'; ctx.fillRect(0, 0, innerWidth, innerHeight);
+  const now = performance.now();
+
+  ctx.lineWidth = 0.8;
+  activeLinks.forEach(l => {
+    ctx.strokeStyle = DOMAINS[l.source.domain].color;
+    ctx.globalAlpha = l.weight >= 2 ? 0.34 : 0.16;
+    ctx.beginPath(); ctx.moveTo(l.source.x, l.source.y); ctx.lineTo(l.target.x, l.target.y); ctx.stroke();
+  });
+  ctx.globalAlpha = 1;
+
+  active.forEach(n => {
+    const col = DOMAINS[n.domain].color;
+    const r = n.hub ? 11 : 3 + n.degree * 0.45;
+    // 诞生脉冲环
+    if (n.bornAt && now - n.bornAt < 1200) {
+      const t = (now - n.bornAt) / 1200;
+      ctx.strokeStyle = col; ctx.globalAlpha = (1 - t) * 0.9; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.arc(n.x, n.y, r + t * 34, 0, 7); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    ctx.fillStyle = col;
+    ctx.shadowColor = col; ctx.shadowBlur = n.hub ? 22 : 9;
+    ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, 7); ctx.fill();
+    ctx.shadowBlur = 0;
+    if (n.hub) {
+      ctx.font = '800 13px Unbounded, "PingFang SC", sans-serif';
+      ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(219,230,245,.95)';
+      ctx.fillText(n.name, n.x, n.y - 18);
+    } else if (n.bornAt && now - n.bornAt < 2600) {
+      ctx.font = '600 10.5px "IBM Plex Mono", "PingFang SC", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = `rgba(219,230,245,${1 - (now - n.bornAt) / 2600})`;
+      ctx.fillText(n.name, n.x, n.y - r - 6);
+    }
+  });
+}
+
+/* ---------- 播放循环 ---------- */
+let lastT = performance.now();
+function loop(t) {
+  const dt = (t - lastT) / 1000; lastT = t;
+  if (playing && year < 2026) {
+    // 早期年份走得快,2010 后放慢品味细节
+    const rate = (year < 2005 ? 6 : year < 2017 ? 3.4 : 1.9) * speed;
+    setYear(Math.min(2026, year + dt * rate));
+    if (year >= 2026) { playing = false; btnPlay.textContent = '重播 ▶'; btnPlay.classList.remove('on'); }
+  }
+  if (sim.alpha() > 0.005) draw();   // 诞生标签淡出也要重绘
+  requestAnimationFrame(loop);
+}
+
+/* ---------- 控件 ---------- */
+const btnPlay = document.getElementById('btn-play');
+btnPlay.onclick = () => {
+  if (year >= 2026) { setYear(1940); active = []; activeLinks = []; }
+  playing = !playing;
+  btnPlay.textContent = playing ? '播放 ⏸' : '暂停 ▶';
+  btnPlay.classList.toggle('on', playing);
+};
+document.getElementById('slider').oninput = e => { playing = false; btnPlay.textContent = '暂停 ▶'; btnPlay.classList.remove('on'); setYear(+e.target.value); };
+const btnSpeed = document.getElementById('btn-speed');
+btnSpeed.onclick = () => {
+  speed = speed >= 4 ? 1 : speed * 2;
+  btnSpeed.textContent = speed + '×';
+};
+document.getElementById('btn-reset').onclick = () => { setYear(1940); active = []; activeLinks = []; setYear(1940); playing = true; btnPlay.textContent = '播放 ⏸'; btnPlay.classList.add('on'); };
+
+const legend = document.getElementById('legend');
+DOMAINS.forEach(d => {
+  const el = document.createElement('span');
+  el.className = 'chip'; el.style.setProperty('--c', d.color);
+  el.innerHTML = `<i></i>${d.name}`;
+  legend.appendChild(el);
+});
+
+setYear(1940);
+requestAnimationFrame(t => { lastT = t; loop(t); });
+</script>
+</body>
+</html>

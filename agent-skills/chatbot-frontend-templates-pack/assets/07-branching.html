@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>07 分支对话 · Chat Templates</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+/* 顶部对话树导航 */
+.tree-nav { flex: none; border-bottom: 1px solid var(--border); background: var(--surface); padding: 10px 16px 6px; }
+.tree-nav .tn-top { display: flex; align-items: center; gap: 10px; margin-bottom: 2px; }
+.tree-nav .tn-title { font-size: 11px; font-weight: 600; letter-spacing: .05em; color: var(--faint); }
+.tree-nav .tn-legend { margin-left: auto; font-size: 10.5px; color: var(--faint); display: flex; gap: 12px; }
+.tree-nav .tn-legend i { font-style: normal; }
+.tree-nav .tn-legend b { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-right: 5px; }
+.tree-nav .tn-legend b.off { background: var(--border-hi); }
+.tree-svg { width: 100%; height: 84px; display: block; }
+.tree-svg .edge { fill: none; stroke: var(--border-hi); stroke-width: 1.5; transition: stroke .2s; }
+.tree-svg .edge.on { stroke: var(--accent); stroke-width: 2; }
+.tree-svg .node { cursor: pointer; }
+.tree-svg .node circle { fill: var(--surface); stroke: var(--border-hi); stroke-width: 1.5; transition: all .2s; }
+.tree-svg .node.on circle { fill: var(--accent); stroke: var(--accent); }
+.tree-svg .node:hover circle { stroke: var(--accent); }
+.tree-svg .node text { font-family: var(--sans); font-size: 10px; fill: var(--dim); }
+.tree-svg .node.on text { fill: var(--ink); font-weight: 600; }
+.tree-svg .fork-hint { font-family: var(--mono); font-size: 8.5px; fill: var(--faint); letter-spacing: .06em; }
+/* 分叉按钮(消息 hover 出现) */
+.fork-btn { color: var(--accent) !important; }
+/* 对比模式 */
+.cmp-grid { display: none; flex: 1; min-height: 0; }
+.cmp-grid.show { display: grid; grid-template-columns: 1fr 1fr; }
+.cmp-col { min-width: 0; overflow-y: auto; border-right: 1px solid var(--border); }
+.cmp-col:last-child { border-right: none; }
+.cmp-col .col-head {
+  position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px; font-size: 12px; font-weight: 600;
+  background: var(--bg); border-bottom: 1px solid var(--border);
+}
+.cmp-col .col-head .pill { font-size: 9.5px; }
+.cmp-col .thread { padding: 18px 18px 24px; gap: 18px; }
+.pick-btn {
+  margin-left: auto; font-size: 11px; font-weight: 500; color: var(--accent);
+  background: var(--accent-soft); border: 1px solid var(--accent-line); border-radius: 99px; padding: 3px 11px;
+}
+</style>
+</head>
+<body data-ai-name="Assistant">
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="sb-head"><span class="logo">💬</span><a href="index.html">Chat Templates</a><span class="tpl">TPL-07</span></div>
+    <button class="new-chat"><b>＋</b> 新建对话</button>
+    <nav class="convs">
+      <div class="group">今天</div>
+      <button class="item on">AI 客服技术方案调研 ⑂2</button>
+      <div class="group">昨天</div>
+      <button class="item">重构方案选型 ⑂3</button>
+      <button class="item">营销文案三个版本 ⑂3</button>
+      <div class="group">前 7 天</div>
+      <button class="item">数据库迁移策略 ⑂2</button>
+    </nav>
+    <div class="sb-foot"><span class="ava">木</span>木鱼<span class="plan">PRO</span></div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="crumb"><a href="index.html">模板库</a> / <b>07 分支对话</b></div>
+      <span class="model-pill"><i></i>Nova-4.5 ▾</span>
+      <div class="tb-spacer"></div>
+      <button class="tb-btn" id="cmp-btn" data-silent="1">⊞ 对比分支</button>
+      <button class="tb-btn" id="theme-toggle" data-silent="1"></button>
+    </header>
+
+    <!-- 对话树导航 -->
+    <div class="tree-nav">
+      <div class="tn-top">
+        <span class="tn-title">对话树 · 2 条分支</span>
+        <span class="tn-legend"><i><b></b>当前路径</i><i><b class="off"></b>其他分支</i></span>
+      </div>
+      <svg class="tree-svg" viewBox="0 0 760 84" preserveAspectRatio="xMinYMid meet">
+        <path class="edge e-root" d="M60,42 H180"/>
+        <path class="edge e-a" d="M180,42 C240,42 240,20 300,20 H480"/>
+        <path class="edge e-b" d="M180,42 C240,42 240,64 300,64 H480"/>
+        <g class="node n-root" data-node="root" transform="translate(60,42)"><circle r="7"/><text x="-14" y="24">提问</text></g>
+        <g class="node n-main" data-node="main" transform="translate(180,42)"><circle r="7"/><text x="-26" y="24">总体结论</text></g>
+        <g class="node n-a1" data-branch="A" transform="translate(300,20)"><circle r="6"/><text x="12" y="4">分支 A · RAG 技术栈细化</text></g>
+        <g class="node n-a2" data-branch="A" transform="translate(480,20)"><circle r="6"/><text x="12" y="4">回答</text></g>
+        <g class="node n-b1" data-branch="B" transform="translate(300,64)"><circle r="6"/><text x="12" y="4">分支 B · Agent 风险清单</text></g>
+        <g class="node n-b2" data-branch="B" transform="translate(480,64)"><circle r="6"/><text x="12" y="4">回答</text></g>
+        <text class="fork-hint" x="560" y="46">⑂ 在任意消息上悬停可继续分叉</text>
+      </svg>
+    </div>
+
+    <!-- 单路径视图 -->
+    <div class="thread-wrap" id="single-view">
+      <div class="thread" id="thread"></div>
+    </div>
+
+    <!-- 对比视图 -->
+    <div class="cmp-grid" id="cmp-grid">
+      <div class="cmp-col">
+        <div class="col-head">分支 A · RAG 技术栈细化 <span class="pill ok">推荐</span><button class="pick-btn" data-pick="A">采用这支 →</button></div>
+        <div class="thread" id="thread-a"></div>
+      </div>
+      <div class="cmp-col">
+        <div class="col-head">分支 B · Agent 风险清单 <span class="pill dim">备选</span><button class="pick-btn" data-pick="B">采用这支 →</button></div>
+        <div class="thread" id="thread-b"></div>
+      </div>
+    </div>
+
+    <div class="composer">
+      <div class="inner">
+        <div class="c-box">
+          <textarea rows="1" placeholder="在当前分支继续,或从任意消息分叉…(演示环境)"></textarea>
+          <button class="send" data-silent="1">↑</button>
+        </div>
+        <div class="c-hint">当前在 <b id="cur-branch">分支 A</b> 上继续 · 顶部树可切换路径 · <b>⊞ 对比分支</b> 并排看两个方案</div>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script src="shared.js"></script>
+<script>
+CT.init();
+
+/* ---------------- 对话数据(树) ---------------- */
+const COMMON = [
+  { role: 'user', t: '14:02', html: '帮我调研一下,2026 年做 AI 客服该选什么技术方案?' },
+  { role: 'ai', t: '14:02', html: '<p>结论:按"答问题"和"办事情"分两条路。<strong>路线 A · RAG 问答型</strong> 2~4 周上线,瓶颈在检索质量;<strong>路线 B · Agent 办事型</strong>能真的退款改单,但要 2~3 个月和审批卡点。想沿哪条深入?<em>(这条消息分叉出了下面两个平行方案)</em></p>' },
+];
+const BRANCH = {
+  A: [
+    { role: 'user', t: '14:05', html: '沿路线 A 细化:给我一份 RAG 技术栈清单' },
+    { role: 'ai', t: '14:05', html: '<p><strong>RAG 问答型技术栈(自建最小集):</strong></p><ul><li><strong>检索:</strong>BM25(OpenSearch)+ 向量(pgvector 起步够用)双路召回,RRF 融合;</li><li><strong>重排:</strong>bge-reranker-v2,延迟预算 80ms;</li><li><strong>生成:</strong>中杯模型 + 强制引用格式输出;</li><li><strong>兜底:</strong>置信度 &lt; 0.62 转人工,阈值用上线后两周的数据回调;</li><li><strong>观测:</strong>命中日志 + badcase 标注后台 —— 没有这个,知识库永远不知道缺什么。</li></ul>' },
+  ],
+  B: [
+    { role: 'user', t: '14:06', html: '沿路线 B 细化:Agent 办事型的风险清单先给我' },
+    { role: 'ai', t: '14:06', html: '<p><strong>Agent 办事型风险清单(按发生率排序):</strong></p><ul><li><strong>工单接口副作用:</strong>写接口幂等性不足 → 重试导致重复退款,必须先做接口体检;</li><li><strong>权限越界:</strong>Agent 拿着服务账号权限过大,要按操作类型最小化授权;</li><li><strong>责任认定:</strong>出事故时"谁批准的"必须可查 —— 审批卡点 + 全链路日志是底线;</li><li><strong>用户对抗:</strong>诱导话术骗 Agent 退款,上线前要做红队测试;</li><li><strong>预算失控:</strong>循环重试烧 token,给单工单设调用上限。</li></ul>' },
+  ],
+};
+
+/* ---------------- 渲染 ---------------- */
+function msgEl(m) {
+  const el = document.createElement('div');
+  el.className = 'msg ' + m.role;
+  el.innerHTML = '<div class="ava">' + (m.role === 'user' ? '你' : 'AI') + '</div>' +
+    '<div class="body"><div class="who">' + (m.role === 'user' ? '你' : 'Assistant') + ' <span class="t">' + m.t + '</span></div>' +
+    '<div class="prose">' + (m.role === 'user' ? m.html : m.html) + '</div>' +
+    '<div class="msg-actions"><button>📋 复制</button><button class="fork-btn">⑂ 从这里分叉</button></div></div>';
+  el.querySelector('.fork-btn').addEventListener('click', () =>
+    CT.toast('演示:真实实现会以此消息为父节点新建分支'));
+  return el;
+}
+function renderPath(branch) {
+  const thread = document.getElementById('thread');
+  thread.innerHTML = '';
+  [...COMMON, ...BRANCH[branch]].forEach(m => thread.appendChild(msgEl(m)));
+  document.getElementById('cur-branch').textContent = '分支 ' + branch;
+  /* 树高亮 */
+  document.querySelector('.e-root').classList.add('on');
+  document.querySelector('.e-a').classList.toggle('on', branch === 'A');
+  document.querySelector('.e-b').classList.toggle('on', branch === 'B');
+  document.querySelectorAll('.tree-svg .node').forEach(n => {
+    const b = n.dataset.branch;
+    n.classList.toggle('on', !b || b === branch);
+  });
+}
+let cur = 'A';
+renderPath(cur);
+
+document.querySelectorAll('.tree-svg .node').forEach(n => n.addEventListener('click', () => {
+  if (n.dataset.branch) { cur = n.dataset.branch; exitCompare(); renderPath(cur); }
+}));
+
+/* ---------------- 对比模式 ---------------- */
+const cmpGrid = document.getElementById('cmp-grid');
+const singleView = document.getElementById('single-view');
+let comparing = false;
+document.getElementById('cmp-btn').addEventListener('click', () => comparing ? exitCompare() : enterCompare());
+function enterCompare() {
+  comparing = true;
+  document.getElementById('cmp-btn').textContent = '☰ 退出对比';
+  singleView.style.display = 'none';
+  cmpGrid.classList.add('show');
+  ['a', 'b'].forEach(k => {
+    const t = document.getElementById('thread-' + k);
+    t.innerHTML = '';
+    BRANCH[k.toUpperCase()].forEach(m => t.appendChild(msgEl(m)));
+  });
+  /* 树上两支都点亮 */
+  document.querySelector('.e-a').classList.add('on');
+  document.querySelector('.e-b').classList.add('on');
+  document.querySelectorAll('.tree-svg .node').forEach(n => n.classList.add('on'));
+}
+function exitCompare() {
+  if (!comparing) return;
+  comparing = false;
+  document.getElementById('cmp-btn').textContent = '⊞ 对比分支';
+  cmpGrid.classList.remove('show');
+  singleView.style.display = '';
+  renderPath(cur);
+}
+cmpGrid.addEventListener('click', e => {
+  const b = e.target.closest('.pick-btn');
+  if (!b) return;
+  cur = b.dataset.pick;
+  exitCompare();
+  CT.toast('已切到分支 ' + cur + ',后续消息在这支上继续');
+});
+
+CT.demoReply = () => '<p>消息已追加到<strong>当前分支</strong>。真实实现:每条消息存 parent 指针,当前对话 = 根到所选节点的路径。</p>';
+</script>
+</body>
+</html>

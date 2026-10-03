@@ -1,0 +1,134 @@
+/* ============================================================
+   星图馆 · 共享视觉系统  —  深空天文台美学
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@300;500;800&family=IBM+Plex+Mono:wght@400;600&display=swap');
+
+:root {
+  --void: #04060d;          /* 深空底色 */
+  --panel: rgba(10, 16, 30, 0.72);
+  --line: rgba(120, 160, 220, 0.16);
+  --ink: #dbe6f5;
+  --ink-dim: #6b7c96;
+  --ink-faint: #3a4a62;
+  --glow-cyan: #22d3ee;
+  --c-llm: #0891b2; --c-agent: #d97706; --c-multimodal: #d946ef;
+  --c-theory: #65a30d; --c-compute: #3b82f6; --c-data: #ea580c;
+  --c-safety: #0d9488; --c-app: #f43f5e;
+  --display: 'Unbounded', 'PingFang SC', sans-serif;
+  --mono: 'IBM Plex Mono', 'PingFang SC', monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; }
+body {
+  background: var(--void);
+  color: var(--ink);
+  font-family: var(--mono);
+  cursor: crosshair;
+}
+
+#stage { position: fixed; inset: 0; }
+
+/* ---- 颗粒噪点,压住数字感的"塑料光滑" ---- */
+body::after {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 90;
+  opacity: 0.05; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---- HUD 骨架 ---- */
+.hud { position: fixed; z-index: 10; pointer-events: none; }
+.hud * { pointer-events: auto; }
+
+.hud-top {
+  top: 0; left: 0; right: 0;
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 22px 28px;
+}
+
+.hud-title .kicker {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 10px; letter-spacing: 0.32em; color: var(--ink-dim);
+  text-transform: uppercase; margin-bottom: 10px;
+}
+.kicker::before { content: ''; width: 26px; height: 1px; background: var(--glow-cyan); box-shadow: 0 0 8px var(--glow-cyan); }
+
+.hud-title h1 {
+  font-family: var(--display); font-weight: 800;
+  font-size: clamp(20px, 3vw, 34px); line-height: 1.05;
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 30px rgba(34, 211, 238, 0.25);
+}
+.hud-title h1 em { font-style: normal; color: var(--glow-cyan); }
+.hud-title .sub { margin-top: 8px; font-size: 11px; color: var(--ink-dim); max-width: 46ch; line-height: 1.7; }
+
+a.back {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em;
+  color: var(--ink-dim); text-decoration: none;
+  border: 1px solid var(--line); padding: 8px 14px;
+  background: var(--panel); backdrop-filter: blur(8px);
+  transition: color .2s, border-color .2s, box-shadow .2s;
+}
+a.back:hover { color: var(--glow-cyan); border-color: var(--glow-cyan); box-shadow: 0 0 18px rgba(34,211,238,.25); }
+
+/* ---- 图例 ---- */
+.legend {
+  position: fixed; left: 28px; bottom: 24px; z-index: 10;
+  display: flex; flex-wrap: wrap; gap: 6px 14px; max-width: 60vw;
+}
+.legend .chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 10.5px; letter-spacing: 0.08em; color: var(--ink-dim);
+  padding: 3px 0; cursor: pointer; transition: color .15s;
+}
+.legend .chip:hover, .legend .chip.on { color: var(--ink); }
+.legend .chip i {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--c); box-shadow: 0 0 9px var(--c);
+}
+
+/* ---- 状态读数 / 控制 ---- */
+.readout {
+  position: fixed; right: 28px; bottom: 24px; z-index: 10;
+  text-align: right; font-size: 10px; letter-spacing: 0.14em;
+  color: var(--ink-faint); line-height: 2;
+}
+.readout b { color: var(--ink-dim); font-weight: 400; }
+
+.controls { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-end; flex-wrap: wrap; }
+button.ctl {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em;
+  color: var(--ink-dim); background: var(--panel); border: 1px solid var(--line);
+  padding: 7px 13px; cursor: pointer; backdrop-filter: blur(8px);
+  transition: all .2s;
+}
+button.ctl:hover { color: var(--glow-cyan); border-color: var(--glow-cyan); }
+button.ctl.on { color: var(--void); background: var(--glow-cyan); border-color: var(--glow-cyan); box-shadow: 0 0 20px rgba(34,211,238,.5); }
+
+/* ---- 悬浮提示 ---- */
+.tip {
+  position: fixed; z-index: 40; pointer-events: none;
+  background: var(--panel); border: 1px solid var(--line);
+  border-left: 2px solid var(--tip-c, var(--glow-cyan));
+  backdrop-filter: blur(10px);
+  padding: 10px 14px; font-size: 12px; line-height: 1.6;
+  opacity: 0; transform: translateY(4px); transition: opacity .12s, transform .12s;
+  max-width: 260px;
+}
+.tip.show { opacity: 1; transform: translateY(0); }
+.tip .t-name { color: var(--ink); font-weight: 600; }
+.tip .t-meta { color: var(--ink-dim); font-size: 10.5px; letter-spacing: 0.08em; margin-top: 2px; }
+
+/* ---- 入场 ---- */
+@keyframes hud-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+.hud-top, .legend, .readout { animation: hud-in 0.9s cubic-bezier(.2,.8,.2,1) both; }
+.legend { animation-delay: .25s; } .readout { animation-delay: .4s; }
+
+/* ---- 扫描线装饰 ---- */
+.scanline {
+  position: fixed; left: 0; right: 0; height: 1px; z-index: 5; pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(34,211,238,.14), transparent);
+  animation: scan 9s linear infinite;
+}
+@keyframes scan { from { top: -2%; } to { top: 102%; } }
